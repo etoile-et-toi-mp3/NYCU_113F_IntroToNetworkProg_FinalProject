@@ -281,7 +281,7 @@ int deal(int playernow) {
                 printf("ERROR OCCURED when transferring decks. exiting...\n");
                 exit(1);
             }
-            else if(strcmp(recvline, "ACK\n") == 0)
+            else if (strcmp(recvline, "ACK\n") == 0)
             {
                 memset(recvline, 0, strlen(recvline));
             }
@@ -296,10 +296,105 @@ int shuffle_n_deal(int playernow) {
     return 0;
 }
 
+int mj_compare(struct mj a, struct mj b) {
+    // if a > b => return -1
+    // if a = b => return 0
+    // if a < b => return 1
+
+    if (a.type == b.type && a.number == b.number)
+    {
+        return 0;
+    }
+    if (a.type > b.type || (a.type == b.type && a.number > b.number))
+    {
+        return -1;
+    }
+    return 1;
+}
+
+int is_hu_verifier(int *count, int n) {
+    if (n == 0)
+    {
+        return 1;
+    }
+
+    for (int i = 0; i < 34; ++i)
+    {
+        // if there is 順子
+        if (count[i] >= 1 &&
+            i + 1 < 34 && count[i + 1] >= 1 &&
+            i + 2 < 34 && count[i + 2] >= 1 &&
+            i / 9 == (i + 1) / 9 && i / 9 == (i + 2) / 9)
+        {
+            count[i]--;
+            count[i + 1]--;
+            count[i + 2]--;
+            if (is_hu_verifier(count, n - 3) == 1)
+            {
+                return 1;
+            }
+            count[i]++;
+            count[i + 1]++;
+            count[i + 2]++;
+        }
+
+        // if there is 刻子
+        if (count[i] >= 3)
+        {
+            count[i] -= 3;
+            if (is_hu_verifier(count, n - 3) == 1)
+            {
+                return 1;
+            }
+            count[i] += 3;
+        }
+    }
+    return 0;
+}
+
 int is_hu(struct mj *decks) {
     // is_hu can sort the decks for its own purpose, but shouldn't modify the real deck;
     struct mj carbon[17];
     memcpy(carbon, decks, 17);
+
+    struct mj mj_gotten = carbon[16];
+    int insertindex = 15;
+    while (mj_compare(carbon[insertindex], mj_gotten) == -1)
+    {
+        carbon[insertindex + 1] = carbon[insertindex];
+        insertindex--;
+        if (insertindex == -1)
+        {
+            break;
+        }
+    }
+
+    insertindex++;
+    carbon[insertindex] = mj_gotten;
+
+    for (int i = 0; i < 17; ++i)
+    {
+        if (i + 1 < 17 && mj_compare(carbon[i], carbon[i + 1]) == 0)
+        {
+            int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
+            memset(count, 0, 34);
+            for (int j = 0; j < 17; ++j)
+            {
+                if (j == i || j == i + 1)
+                {
+                    continue;
+                }
+                count[(carbon[j].type - 1) * 9 + carbon[j].number]++;
+            }
+
+            if (is_hu_verifier(count, 15) == 1)
+            {
+                // this deck can hu!
+                return 1;
+            }
+        }
+    }
+    return 0;
 }
 
 int draw(int playernow) {
@@ -308,16 +403,21 @@ int draw(int playernow) {
     memset(sendline, 0, strlen(sendline));
 
     players[playernow]->decks[16] = shuffled_mjs[take_index++];
-    
+
     while (players[playernow]->decks[16].type == FLOWER)
     {
         players[playernow]->flowers[players[playernow]->flower_index++] = players[playernow]->decks[16];
         players[playernow]->decks[16] = shuffled_mjs[take_index++];
     }
 
-    if (is_hu(players[playernow]->decks))
+    if (is_hu(players[playernow]->decks) == 1)
     {
-        // send soemthing, if want to hu: set winner
+        // sprintf(sendline, "You already suffice the conditions to win, proceed? [Y/n]\n");
+        // write(STDIN_FILENO, sendline, strlen(sendline));
+        // memset(sendline, 0, strlen(sendline));
+
+        // send something to the client to ask them whether they want to hu?
+        // if want to hu: set winner
         // if dont want to hu: just dont do it lol;
     }
     return 0;
@@ -452,7 +552,7 @@ int game() {
     {
         int playernow = startplayer;
         shuffle_n_deal(playernow);
-        for( ; winner == -1 ; playernow ++, playernow %= 4)
+        for (; winner == -1; playernow++, playernow %= 4)
         {
             draw_n_discard(playernow);
             othersreaction(&playernow); // note that this is a value_result argument. just think about it and you will know why we do this.
