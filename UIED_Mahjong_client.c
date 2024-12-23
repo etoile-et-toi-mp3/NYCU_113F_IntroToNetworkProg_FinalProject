@@ -27,9 +27,15 @@ struct mj {
     int type;   // all the numbers here should be 1-indexed;
     int number; // all the numbers here should be 1-indexed;
     int priority;
-} decks[20], flowers[8], door[20], sea[150], discarded_mj;
+} decks[20], flowers[8], door[20], sea[150], discarded_mj, EMPTY_MJ = {0, 0, 0};
+typedef struct mj mj;
 
 int flower_index = 0, door_index = 0, sea_index = 0, start_player = 0, normal_capacity = 16;
+
+// the following variables are for cards;
+char number[10][10]={"NULL","一", "二", "三", "四", "五", "六", "七", "八", "九"};
+char wind_number[8][10]={"NULL","東", "南", "西", "北", "中", "發", "白"};
+char type[10][10]={"NULL","萬", "筒", "條", "風", "花"};
 
 // establish connection with the server
 int connection_establish() {
@@ -158,6 +164,133 @@ void decks_quick_sort(struct mj *mjs, int start, int end) {
     decks_quick_sort(mjs, right + 1, end);
 }
 
+void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
+    //if last is played by other
+    if(hu==0 && last.type != 0) {
+        printf("other player played: \n");
+        printf("___\n");
+        if(last.type == 4) {
+            printf("|%s|\n", wind_number[last.number]);
+        } else printf("|%s|\n", number[last.number]);
+        if(last.type == 4 && last.number > 4) {
+            printf("|  |\n");
+        } else printf("|%s|\n", type[last.type]);
+        printf("‾‾‾\n");
+    }
+    if(hu==1)printf("You are really good at this game! \nresult:\n");
+    else printf("Your hand: \n");
+    //print index
+    if(you_to_play){
+        for (int i = 0; i < 20; ++i)
+        {  
+            if(hands[i].type == 0 && hands[i].number == 0) {
+                break;
+            }
+            if(i>=10)printf(" %d", i);
+            else printf(" 0%d", i);
+        }
+        printf("\n");
+    }
+    
+    for (int i = 0; i < 20; ++i)
+    {
+        if(hands[i].type == 0 && hands[i].number == 0) {
+            break;
+        }
+        printf("___");
+    }
+    printf("_\t");
+    if(hu && last.type != 0) {
+        printf("___");
+    }
+    printf("\t\t");
+    for (int i = 0; i < 20; ++i)
+    {
+        if(doors[i].type == 0 && doors[i].number == 0) {
+            break;
+        }
+        printf("___");
+    }
+    printf("_\n");
+
+    // print the number
+    printf("|");
+    for (int i = 0; i < 20; ++i)
+    {
+        if(hands[i].type == 0 && hands[i].number == 0) {
+            break;
+        }if(hands[i].type == 4) {
+            printf("%s|", wind_number[hands[i].number]);
+        } else printf("%s|", number[hands[i].number]);
+    }
+    printf("\t");
+    if(hu && last.type != 0) {
+        if(last.type == 4) {
+            printf("|%s|", wind_number[last.number]);
+        } else printf("|%s|", number[last.number]);
+    }
+
+    printf("\t\t|");
+    for (int i = 0; i < 20; ++i)
+    {
+        if(doors[i].type == 0 && doors[i].number == 0) {
+            break;
+        }
+        if(doors[i].type == 4) {
+            printf("%s|", wind_number[doors[i].number]);
+        } else printf("%s|", number[doors[i].number]);
+    }
+    //end of print the number
+    printf("\n");
+    // print the type
+    for (int i = 0; i < 20; ++i)
+    {
+        if(hands[i].type == 0 && hands[i].number == 0) {
+            break;
+        }
+        if(hands[i].type == 4 && hands[i].number > 4) printf("|  ");
+        else printf("|%s", type[hands[i].type]);
+    }
+    printf("|\t");
+    if(hu && last.type != 0) {
+        if(last.type == 4 && last.number > 4) {
+            printf("|  ");
+        } else printf("|%s", type[last.type]);
+    }   
+    if(hu)printf("|");
+    printf("\t\t");
+    for(int i = 0; i < 20; i++) {
+        if(doors[i].type == 0 && doors[i].number == 0) {
+            break;
+        }
+        if(doors[i].type == 4 && doors[i].number > 4) printf("|  ");
+        else printf("|%s", type[doors[i].type]);
+    }
+    printf("|\n");
+    //end of print the type
+    for (int i = 0; i < 20; ++i)
+    {
+        if(hands[i].type == 0 && hands[i].number == 0) {
+            break;
+        }
+        printf("‾‾‾");
+    }
+    printf("‾\t");
+    if(hu && last.type != 0) {
+        printf("‾‾‾");
+    }
+    printf("\t\t");
+    for (int i = 0; i < 20; ++i)
+    {
+        if(doors[i].type == 0 && doors[i].number == 0) {
+            break;
+        }
+        printf("‾‾‾");
+    }
+    printf("‾\n");
+    return;
+}
+
 int client_draw() {
     // get new mj;
     printf("enter client_draw\n");
@@ -221,6 +354,7 @@ int client_is_hu() {
 }
 
 int client_discard() {
+    print_deck(decks, door, EMPTY_MJ, 0, 1);
     printf("Choose a mj and discard it...!\n");
     int index;
     scanf("%d", &index);
@@ -331,20 +465,6 @@ int get_result() {
     return 0;
 }
 
-int print_deck() {
-    for (int i = 0; i < 16; ++i)
-    {
-        printf("%d ", decks[i].type);
-    }
-    printf("\n");
-    for (int i = 0; i < 16; ++i)
-    {
-        printf("%d ", decks[i].number);
-    }
-    printf("\n");
-    return 0;
-}
-
 int receive_id() {
     read(fd, recvline, MAXLINE);
     id_num = (int)recvline[0] - '0';
@@ -373,7 +493,7 @@ int game() {
 
         for (;;)
         {
-            print_deck();
+            print_deck(decks, door, discarded_mj, 0, 0);
             if (read(fd, recvline, MAXLINE) <= 0)
             {
                 printf("Server terminated prematurely!? Exiting...\n");
@@ -388,6 +508,7 @@ int game() {
                     // yeah it's your turn;
                     client_draw();
                     client_is_hu();
+                    print_deck(decks, door, EMPTY_MJ, 0, 1);
                     client_discard();
                     continue;
                 }

@@ -30,7 +30,7 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
     else printf("Your hand: \n");
     //print index
     if(you_to_play){
-        for (int i = 0; i < 16; ++i)
+        for (int i = 0; i < 20; ++i)
         {  
             if(hands[i].type == 0 && hands[i].number == 0) {
                 break;
@@ -41,7 +41,7 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
         printf("\n");
     }
     
-    for (int i = 0; i < 16; ++i)
+    for (int i = 0; i < 20; ++i)
     {
         if(hands[i].type == 0 && hands[i].number == 0) {
             break;
@@ -64,7 +64,7 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
 
     // print the number
     printf("|");
-    for (int i = 0; i < 16; ++i)
+    for (int i = 0; i < 20; ++i)
     {
         if(hands[i].type == 0 && hands[i].number == 0) {
             break;
@@ -92,7 +92,7 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
     //end of print the number
     printf("\n");
     // print the type
-    for (int i = 0; i < 16; ++i)
+    for (int i = 0; i < 20; ++i)
     {
         if(hands[i].type == 0 && hands[i].number == 0) {
             break;
@@ -117,7 +117,7 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
     }
     printf("|\n");
     //end of print the type
-    for (int i = 0; i < 16; ++i)
+    for (int i = 0; i < 20; ++i)
     {
         if(hands[i].type == 0 && hands[i].number == 0) {
             break;
@@ -143,7 +143,7 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
 int main() {
     system("clear");
     for(int i = 0; i < 10; i++)printf("\n");
-    mj hand[16], door[20], last;
+    mj hand[20], door[20], last;
     bzero(hand, sizeof(hand));
     bzero(door, sizeof(door));
     last.type = 3;
