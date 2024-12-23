@@ -35,7 +35,7 @@ int flower_index = 0, door_index = 0, sea_index = 0, start_player = 0, normal_ca
 // the following variables are for cards;
 char number[10][10]={"NULL","一", "二", "三", "四", "五", "六", "七", "八", "九"};
 char wind_number[8][10]={"NULL","東", "南", "西", "北", "中", "發", "白"};
-char type[10][10]={"NULL","萬", "筒", "條", "風", "花"};
+char type[10][10]={"NULL","筒", "條", "萬", "風", "花"};
 
 // establish connection with the server
 int connection_establish() {
@@ -291,6 +291,19 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
     return;
 }
 
+void print_single_card(mj a){
+    printf("___\n|");
+    if(a.type == 4) {
+        printf("%s", wind_number[a.number]);
+    } else printf("%s", number[a.number]);
+    printf("|\n|");
+    if(a.type == 4 && a.number > 4) {
+        printf(" ");
+    } else printf("%s", type[a.type]);
+    printf("|\n‾‾‾\n");
+    return;
+}
+
 int client_draw() {
     // get new mj;
     printf("enter client_draw\n");
@@ -303,17 +316,21 @@ int client_draw() {
     // flower regrab
     while (decks[normal_capacity].type == FLOWER)
     {
+        printf("A flower is drawn.\n");
         flowers[flower_index++] = decks[normal_capacity];
 
         read(fd, recvline, MAXLINE);
         sscanf(recvline, "%d %d\n", &decks[normal_capacity].type, &decks[normal_capacity].number);
         memset(recvline, 0, strlen(recvline));
     }
+    printf("client_draw ends\n");
     return 0;
 }
 
 int client_is_hu() {
+    printf("enter client_is_hu\n");
     read(fd, recvline, MAXLINE);
+    printf("IN client_is_hu recvline: %s", recvline);
     if (strncmp(recvline, "can hu\n", 7) == 0)
     {
         char answer[64];
@@ -493,6 +510,8 @@ int game() {
 
         for (;;)
         {
+            //system("clear");
+            printf("initial hand:\n");
             print_deck(decks, door, discarded_mj, 0, 0);
             if (read(fd, recvline, MAXLINE) <= 0)
             {
@@ -503,12 +522,12 @@ int game() {
             {
                 if (strncmp(recvline, "your turn\n", 10) == 0)
                 {
-                    printf("YOURTURN: %s", recvline);
+                    printf("YOURTURN: %s\n======\n", recvline);
                     memset(recvline, 0, strlen(recvline));
                     // yeah it's your turn;
                     client_draw();
+                    print_deck(decks, door, discarded_mj, 0, 1);
                     client_is_hu();
-                    print_deck(decks, door, EMPTY_MJ, 0, 1);
                     client_discard();
                     continue;
                 }
