@@ -86,7 +86,7 @@ int point(int base, int mul, mj *decks, mj last, int doorwind) {
     //碰碰胡 4台
     tmpcnt = 0;
     for (int i = 2; i < 16; i++) {
-        if(mjsame(decks[i], decks[i-1]) && mjsame(decks[i], decks[i-2])) {
+        if(mjsame(decks[i], decks[i-1]) && mjsame(decks[i], decks[i-2])) 
             tmpcnt++;
         if(mjsame(decks[i], decks[i-1]) && mjsame(decks[i], last))
             tmpcnt++;
