@@ -49,12 +49,12 @@ const int FLOWER = 5; // it goes with 春夏秋冬梅蘭竹菊;
 
 int winner = -1; // will be the index of the winner, or -1 before the game has set, or -2 if 流局。
 
-struct mj shuffled_mjs[144];
+struct mj shuffled_mjs[144], discarded_mj;
 
 int take_index = 0;
 
 struct player {
-    int fd, flower_index;
+    int fd, flower_index, door_index, sea_index;
     struct sockaddr_in info;
     socklen_t len;
     struct mj decks[20], flowers[8], door[20], sea[150];
@@ -70,8 +70,115 @@ struct player *player_init() {
     memset(p, 0, sizeof(struct player));
     p->fd = -1;
     p->flower_index = 0;
+    p->door_index = 0;
+    p->sea_index = 0;
     p->len = sizeof(struct sockaddr_in);
     return p;
+}
+
+int connection_establish() {
+    // set up serverinfo and listenfd
+    memset(&serverinfo, 0, sizeof(serverinfo));
+    serverinfo.sin_family = AF_INET;
+    serverinfo.sin_addr.s_addr = htonl(INADDR_ANY);
+    serverinfo.sin_port = htons(SERV_PORT + 10);
+    serverlen = sizeof(serverinfo);
+    FD_ZERO(&rset);
+    timeout.tv_sec = 1; // set the timeout to 1 second;
+
+    // enable server
+    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        printf("ERROR OCCURED IN socket(), exiting...\n");
+        exit(1);
+    }
+
+    if ((bind(listenfd, (SA *)&serverinfo, serverlen)) < 0)
+    {
+        printf("ERROR OCCURED IN bind(), errno = %d, exiting...\n", errno);
+        exit(1);
+    }
+
+    if ((listen(listenfd, LISTENQ)) < 0)
+    {
+        printf("ERROR OCCURED IN listen(), exiting...\n");
+        exit(1);
+    }
+
+    printf("Server listening on port %d...\n", SERV_PORT + 10);
+
+    // wait until 4 stable connection is present
+    for (;;)
+    {
+        int connection_count = 0;
+        for (int i = 0; i < 4; ++i)
+        {
+            if (players[i] && players[i]->fd == -1)
+            {
+                if ((players[i]->fd = accept(listenfd, (SA *)&(players[i]->info), &(players[i]->len))) < 0)
+                {
+                    if (errno == EINTR)
+                    {
+                        continue; // Retry on interrupt
+                    }
+                    else
+                    {
+                        perror("accept");
+                        exit(1);
+                    }
+                }
+
+                // Player successfully connected
+                printf("A client is connected!\n");
+                FD_SET(players[i]->fd, &rset);
+                if (players[i]->fd > maxfd)
+                {
+                    maxfd = players[i]->fd;
+                }
+            }
+
+            // Increment connection count for each player slot processed
+            connection_count++;
+        }
+        testset = rset;
+        select(maxfd + 1, &testset, NULL, NULL, &timeout);
+        for (int i = 0; i < 4; ++i)
+        {
+            if (FD_ISSET(players[i]->fd, &testset))
+            {
+                if (read(players[i]->fd, recvline, MAXLINE) == 0)
+                {
+                    // this client just diconnected;
+                    printf("A client just disconnected!\n");
+                    connection_count--;
+                    close(players[i]->fd);
+                    free(players[i]);
+                    players[i] = player_init();
+                }
+            }
+        }
+        if (connection_count == 4)
+        {
+            // ready to go!!! send start signal;
+            sprintf(sendline, "start!\n");
+            for (int i = 0; i < 4; ++i)
+            {
+                write(players[i]->fd, sendline, strlen(sendline));
+            }
+            memset(sendline, 0, strlen(sendline));
+            break;
+        }
+        else
+        {
+            sprintf(sendline, "wait...\n");
+            for (int i = 0; i < 4; ++i)
+            {
+                write(players[i]->fd, sendline, strlen(sendline));
+            }
+            memset(sendline, 0, strlen(sendline));
+        }
+    }
+    return 0;
 }
 
 void swap(struct mj *a, struct mj *b) {
@@ -272,7 +379,7 @@ int deal(int playernow) {
     {
         for (int j = 0; j < 16; ++j)
         {
-            sprintf(sendline, "%d %d ", players[i]->decks[j].type, players[i]->decks[j].number); // i-th mj, TYPE, NUMBER.
+            sprintf(sendline, "%d %d\n", players[i]->decks[j].type, players[i]->decks[j].number); // i-th mj, TYPE, NUMBER.
             write(players[i]->fd, sendline, strlen(sendline));
             memset(sendline, 0, strlen(sendline));
 
@@ -286,6 +393,25 @@ int deal(int playernow) {
                 memset(recvline, 0, strlen(recvline));
             }
         }
+        for (int j = 0; j < players[i]->flower_index; ++j)
+        {
+            sprintf(sendline, "%d\n", players[i]->flowers[j].number); // i-th mj, TYPE, NUMBER.
+            write(players[i]->fd, sendline, strlen(sendline));
+            memset(sendline, 0, strlen(sendline));
+
+            if (read(players[i]->fd, recvline, MAXLINE) <= 0)
+            {
+                printf("ERROR OCCURED when transferring flowers. exiting...\n");
+                exit(1);
+            }
+            else if (strcmp(recvline, "ACK\n") == 0)
+            {
+                memset(recvline, 0, strlen(recvline));
+            }
+        }
+        sprintf(sendline, "transfer complete\n");
+        write(players[i]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
     }
     return 0;
 }
@@ -312,7 +438,7 @@ int mj_compare(struct mj a, struct mj b) {
     return 1;
 }
 
-int is_hu_verifier(int *count, int n) {
+int hu_recursive_check(int *count, int n) {
     if (n == 0)
     {
         return 1;
@@ -329,7 +455,7 @@ int is_hu_verifier(int *count, int n) {
             count[i]--;
             count[i + 1]--;
             count[i + 2]--;
-            if (is_hu_verifier(count, n - 3) == 1)
+            if (hu_recursive_check(count, n - 3) == 1)
             {
                 return 1;
             }
@@ -342,7 +468,7 @@ int is_hu_verifier(int *count, int n) {
         if (count[i] >= 3)
         {
             count[i] -= 3;
-            if (is_hu_verifier(count, n - 3) == 1)
+            if (hu_recursive_check(count, n - 3) == 1)
             {
                 return 1;
             }
@@ -352,9 +478,10 @@ int is_hu_verifier(int *count, int n) {
     return 0;
 }
 
-int is_hu(struct mj *decks) {
-    // is_hu can sort the decks for its own purpose, but shouldn't modify the real deck;
+int hu_check(struct mj *decks) {
+    // hu_check can sort the decks for its own purpose, but shouldn't modify the real deck;
     struct mj carbon[17];
+    memset(carbon, 0, 17*sizeof(struct mj));
     memcpy(carbon, decks, 17);
 
     struct mj mj_gotten = carbon[16];
@@ -376,8 +503,9 @@ int is_hu(struct mj *decks) {
     {
         if (i + 1 < 17 && mj_compare(carbon[i], carbon[i + 1]) == 0)
         {
+            // there exist a 一對 in this deck;
             int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
-            memset(count, 0, 34);
+            memset(count, 0, 34*sizeof(int));
             for (int j = 0; j < 17; ++j)
             {
                 if (j == i || j == i + 1)
@@ -387,7 +515,7 @@ int is_hu(struct mj *decks) {
                 count[(carbon[j].type - 1) * 9 + carbon[j].number]++;
             }
 
-            if (is_hu_verifier(count, 15) == 1)
+            if (hu_recursive_check(count, 15) == 1)
             {
                 // this deck can hu!
                 return 1;
@@ -398,145 +526,346 @@ int is_hu(struct mj *decks) {
 }
 
 int draw(int playernow) {
-    sprintf(sendline, "your turn\n");
+    players[playernow]->decks[16] = shuffled_mjs[take_index++];
+
+    sprintf(sendline, "%d %d\n", players[playernow]->decks[16].type, players[playernow]->decks[16].number);
     write(players[playernow]->fd, sendline, strlen(sendline));
     memset(sendline, 0, strlen(sendline));
-
-    players[playernow]->decks[16] = shuffled_mjs[take_index++];
 
     while (players[playernow]->decks[16].type == FLOWER)
     {
         players[playernow]->flowers[players[playernow]->flower_index++] = players[playernow]->decks[16];
         players[playernow]->decks[16] = shuffled_mjs[take_index++];
+
+        sprintf(sendline, "%d %d\n", players[playernow]->decks[16].type, players[playernow]->decks[16].number);
+        write(players[playernow]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
     }
+    return 0;
+}
 
-    if (is_hu(players[playernow]->decks) == 1)
+int is_hu(int playernow) {
+    if (hu_check(players[playernow]->decks) == 1)
     {
-        // sprintf(sendline, "You already suffice the conditions to win, proceed? [Y/n]\n");
-        // write(STDIN_FILENO, sendline, strlen(sendline));
-        // memset(sendline, 0, strlen(sendline));
+        sprintf(sendline, "can hu\n");
+        write(players[playernow]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
 
-        // send something to the client to ask them whether they want to hu?
-        // if want to hu: set winner
-        // if dont want to hu: just dont do it lol;
+        read(players[playernow]->fd, recvline, MAXLINE);
+        if (strcmp(recvline, "YES!\n") == 0)
+        {
+            // we have a winner here!
+            winner = playernow;
+            memset(recvline, 0, strlen(recvline));
+            return 1;
+        }
+        else
+        {
+            // do nothing, just let the game continue;
+        }
+        memset(recvline, 0, strlen(recvline));
+    }
+    else
+    {
+        sprintf(sendline, "cannot hu\n");
+        write(players[playernow]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
     }
     return 0;
 }
 
 int discard(int playernow) {
+    read(players[playernow]->fd, recvline, MAXLINE);
+    int index;
+    sscanf(recvline, "%d", &index);
+    memset(read, 0, strlen(recvline));
+
+    discarded_mj.type = players[playernow]->decks[index].type;
+    discarded_mj.number = players[playernow]->decks[index].number;
+    swap(&players[playernow]->decks[16], &players[playernow]->decks[index]);
+    players[playernow]->decks[16].type = 0;
+    players[playernow]->decks[16].number = 0;
+    decks_quick_sort(players[playernow]->decks, 0, 15);
+
+    if (discarded_mj.type == TONG)
+    {
+        sprintf(sendline, "player %d discarded %d TONG.\n", playernow, discarded_mj.number);
+    }
+    else if (discarded_mj.type == TIAO)
+    {
+        sprintf(sendline, "player %d discarded %d TIAO.\n", playernow, discarded_mj.number);
+    }
+    else if (discarded_mj.type == WAN)
+    {
+        sprintf(sendline, "player %d discarded %d WAN.\n", playernow, discarded_mj.number);
+    }
+    else if (discarded_mj.type == DAZI)
+    {
+        if (discarded_mj.number == 1)
+        {
+            sprintf(sendline, "player %d discarded EAST.\n", playernow);
+        }
+        else if (discarded_mj.number == 2)
+        {
+            sprintf(sendline, "player %d discarded SOUTH.\n", playernow);
+        }
+        else if (discarded_mj.number == 3)
+        {
+            sprintf(sendline, "player %d discarded WEST.\n", playernow);
+        }
+        else if (discarded_mj.number == 4)
+        {
+            sprintf(sendline, "player %d discarded NORTH.\n", playernow);
+        }
+        else if (discarded_mj.number == 5)
+        {
+            sprintf(sendline, "player %d discarded ZHONG.\n", playernow);
+        }
+        else if (discarded_mj.number == 6)
+        {
+            sprintf(sendline, "player %d discarded FA.\n", playernow);
+        }
+        else if (discarded_mj.number == 7)
+        {
+            sprintf(sendline, "player %d discarded BAI.\n", playernow);
+        }
+    }
+
+    write(players[(playernow + 1) % 4]->fd, sendline, strlen(sendline));
+    write(players[(playernow + 2) % 4]->fd, sendline, strlen(sendline));
+    write(players[(playernow + 3) % 4]->fd, sendline, strlen(sendline));
+    memset(sendline, 0, strlen(sendline));
+    return 0;
 }
 
 int draw_n_discard(int playernow) {
+    sprintf(sendline, "your turn\n");
+    write(players[playernow]->fd, sendline, strlen(sendline));
+    memset(sendline, 0, strlen(sendline));
+
     draw(playernow);
+    if(is_hu(playernow) == 1)
+    {
+        return 1;
+    }
     discard(playernow);
     return 0;
 }
 
-int othersreaction(int *playernowp) {
+int is_pong_possible(struct mj *deck) {
+    int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
+    memset(count, 0, 34*sizeof(int));
+    for (int j = 0; j < 16; ++j)
+    {
+        count[(deck[j].type - 1) * 9 + deck[j].number]++;
+    }
+
+    if (count[(discarded_mj.type - 1) * 9 + discarded_mj.number] >= 2)
+    {
+        // this deck can pong!
+        return 1;
+    }
+    return 0;
 }
 
-int connection_establish() {
-    // set up serverinfo and listenfd
-    memset(&serverinfo, 0, sizeof(serverinfo));
-    serverinfo.sin_family = AF_INET;
-    serverinfo.sin_addr.s_addr = htonl(INADDR_ANY);
-    serverinfo.sin_port = htons(SERV_PORT + 10);
-    serverlen = sizeof(serverinfo);
-    FD_ZERO(&rset);
-    timeout.tv_sec = 1; // set the timeout to 1 second;
-
-    // enable server
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+int is_eat_possible(struct mj *deck) {
+    if (discarded_mj.type == DAZI)
     {
-        printf("ERROR OCCURED IN socket(), exiting...\n");
-        exit(1);
+        // of course you cant eat DAZI;
+        return 0;
     }
 
-    if ((bind(listenfd, (SA *)&serverinfo, serverlen)) < 0)
+    int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
+    memset(count, 0, 34*sizeof(int));
+    for (int j = 0; j < 16; ++j)
     {
-        printf("ERROR OCCURED IN bind(), errno = %d, exiting...\n", errno);
-        exit(1);
+        count[(deck[j].type - 1) * 9 + deck[j].number]++;
     }
 
-    if ((listen(listenfd, LISTENQ)) < 0)
+    if (count[discarded_mj.number] >= 1 &&
+        discarded_mj.number + 1 < 34 && count[discarded_mj.number + 1] >= 1 &&
+        discarded_mj.number + 2 < 34 && count[discarded_mj.number + 2] >= 1 &&
+        discarded_mj.number / 9 == (discarded_mj.number + 1) / 9 &&
+        discarded_mj.number / 9 == (discarded_mj.number + 2) / 9)
     {
-        printf("ERROR OCCURED IN listen(), exiting...\n");
-        exit(1);
+        // this deck can eat!
+        return 1;
     }
-
-    printf("Server listening on port %d...\n", SERV_PORT + 10);
-
-    // wait until 4 stable connection is present
-    for (;;)
+    else if (count[discarded_mj.number] >= 1 &&
+             discarded_mj.number + 1 < 34 && count[discarded_mj.number + 1] >= 1 &&
+             discarded_mj.number - 1 < 34 && count[discarded_mj.number - 1] >= 1 &&
+             discarded_mj.number / 9 == (discarded_mj.number + 1) / 9 &&
+             discarded_mj.number / 9 == (discarded_mj.number - 1) / 9)
     {
-        int connection_count = 0;
-        for (int i = 0; i < 4; ++i)
-        {
-            if (players[i] && players[i]->fd == -1)
-            {
-                if ((players[i]->fd = accept(listenfd, (SA *)&(players[i]->info), &(players[i]->len))) < 0)
-                {
-                    if (errno == EINTR)
-                    {
-                        continue; // Retry on interrupt
-                    }
-                    else
-                    {
-                        perror("accept");
-                        exit(1);
-                    }
-                }
+        // this deck can eat!
+        return 1;
+    }
+    else if (count[discarded_mj.number] >= 1 &&
+             discarded_mj.number - 2 < 34 && count[discarded_mj.number - 2] >= 1 &&
+             discarded_mj.number - 1 < 34 && count[discarded_mj.number - 1] >= 1 &&
+             discarded_mj.number / 9 == (discarded_mj.number - 2) / 9 &&
+             discarded_mj.number / 9 == (discarded_mj.number - 1) / 9)
+    {
+        // this deck can eat!
+        return 1;
+    }
+    return 0;
+}
 
-                // Player successfully connected
-                printf("A client is connected!\n");
-                FD_SET(players[i]->fd, &rset);
-                if (players[i]->fd > maxfd)
-                {
-                    maxfd = players[i]->fd;
-                }
-            }
+int othersreaction(int *playernowp) {
+    // only broadcast the discarded mj when other players
+    // can really have some reaction to it.
+    // otherwise put this discarded mj to the sea of its original player;
 
-            // Increment connection count for each player slot processed
-            connection_count++;
-        }
-        testset = rset;
-        select(maxfd + 1, &testset, NULL, NULL, &timeout);
-        for (int i = 0; i < 4; ++i)
+    // Case 1: others may be able to 碰
+    if (is_pong_possible(players[*playernowp + 1]->decks) == 1)
+    {
+        sprintf(sendline, "You can pong.\n");
+        write(players[*playernowp + 1]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
+
+        read(players[*playernowp + 1]->fd, recvline, MAXLINE);
+        if (strcmp(recvline, "YES!\n") == 0)
         {
-            if (FD_ISSET(players[i]->fd, &testset))
-            {
-                if (read(players[i]->fd, recvline, MAXLINE) == 0)
-                {
-                    // this client just diconnected;
-                    printf("A client just disconnected!\n");
-                    connection_count--;
-                    close(players[i]->fd);
-                    free(players[i]);
-                    players[i] = player_init();
-                }
-            }
-        }
-        if (connection_count == 4)
-        {
-            // ready to go!!! send start signal;
-            sprintf(sendline, "start!\n");
-            for (int i = 0; i < 4; ++i)
-            {
-                write(players[i]->fd, sendline, strlen(sendline));
-            }
+            memset(recvline, 0, strlen(recvline));
+
+            *playernowp = *playernowp + 1;
+            players[*playernowp]->decks[16] = discarded_mj;
+
+            sprintf(sendline, "(Announce) player %d ponged it\n", *playernowp);
+            write(players[*playernowp]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 1]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 2]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 3]->fd, sendline, strlen(sendline));
             memset(sendline, 0, strlen(sendline));
-            break;
+
+            is_hu(*playernowp);
+            discard(*playernowp);
+            othersreaction(playernowp);
         }
         else
         {
-            sprintf(sendline, "wait...\n");
-            for (int i = 0; i < 4; ++i)
-            {
-                write(players[i]->fd, sendline, strlen(sendline));
-            }
-            memset(sendline, 0, strlen(sendline));
+            // the player don't want to pong
+            memset(recvline, 0, strlen(recvline));
         }
     }
+    else if (is_pong_possible(players[*playernowp + 2]->decks) == 1)
+    {
+        sprintf(sendline, "You can pong.\n");
+        write(players[*playernowp + 2]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
+
+        read(players[*playernowp + 2]->fd, recvline, MAXLINE);
+        if (strcmp(recvline, "YES!\n") == 0)
+        {
+            memset(recvline, 0, strlen(recvline));
+            *playernowp = *playernowp + 2;
+            players[*playernowp]->decks[16] = discarded_mj;
+
+            sprintf(sendline, "(Announce) player %d ponged it\n", *playernowp);
+            write(players[*playernowp]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 1]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 2]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 3]->fd, sendline, strlen(sendline));
+            memset(sendline, 0, strlen(sendline));
+
+            is_hu(*playernowp);
+            discard(*playernowp);
+            othersreaction(playernowp);
+        }
+        else
+        {
+            // the player don't want to pong
+            memset(recvline, 0, strlen(recvline));
+        }
+    }
+    else if (is_pong_possible(players[*playernowp + 3]->decks) == 1)
+    {
+        sprintf(sendline, "You can pong.\n");
+        write(players[*playernowp + 3]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
+
+        read(players[*playernowp + 3]->fd, recvline, MAXLINE);
+        if (strcmp(recvline, "YES!\n") == 0)
+        {
+            memset(recvline, 0, strlen(recvline));
+            *playernowp = *playernowp + 3;
+            players[*playernowp]->decks[16] = discarded_mj;
+
+            sprintf(sendline, "(Announce) player %d ponged it\n", *playernowp);
+            write(players[*playernowp]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 1]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 2]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 3]->fd, sendline, strlen(sendline));
+            memset(sendline, 0, strlen(sendline));
+
+            is_hu(*playernowp);
+            discard(*playernowp);
+            othersreaction(playernowp);
+        }
+        else
+        {
+            // the player don't want to pong
+            memset(recvline, 0, strlen(recvline));
+        }
+    }
+    // Case 2: 下家 may be able to 吃
+    else if (is_eat_possible(players[*playernowp + 1]->decks) == 1)
+    {
+        sprintf(sendline, "You can pong.\n");
+        write(players[*playernowp + 1]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
+
+        read(players[*playernowp + 1]->fd, recvline, MAXLINE);
+        if (strcmp(recvline, "YES!\n") == 0)
+        {
+            memset(recvline, 0, strlen(recvline));
+            *playernowp = *playernowp + 1;
+            players[*playernowp]->decks[16] = discarded_mj;
+
+            sprintf(sendline, "(Announce) player %d ate it\n", *playernowp);
+            write(players[*playernowp]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 1]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 2]->fd, sendline, strlen(sendline));
+            write(players[*playernowp + 3]->fd, sendline, strlen(sendline));
+            memset(sendline, 0, strlen(sendline));
+
+            is_hu(*playernowp);
+            discard(*playernowp);
+            othersreaction(playernowp);
+        }
+        else
+        {
+            // the player don't want to eat
+            memset(recvline, 0, strlen(recvline));
+        }
+    }
+    // Case 3: no players can do anything
+    else
+    {
+        sprintf(sendline, "no one wants it.\n");
+        write(players[*playernowp]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
+
+        players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
+        discarded_mj.type = 0;
+        discarded_mj.number = 0;
+    }
+    return 0;
+}
+
+int game_set_display(){
+    sprintf(sendline, "(Game) The game is set and we have a winner: %d!!!\nContinue for next round? [Y/n]", winner);
+    write(players[0]->fd, sendline, strlen(sendline));
+    write(players[1]->fd, sendline, strlen(sendline));
+    write(players[2]->fd, sendline, strlen(sendline));
+    write(players[3]->fd, sendline, strlen(sendline));
+    memset(sendline, 0, strlen(sendline));
+
+    // wait until everyone said yes
+    // if so, return 1 to restart the game (get back in the loop)
+    // otherwise, return 0 to stop the game
+
     return 0;
 }
 
@@ -554,11 +883,22 @@ int game() {
         shuffle_n_deal(playernow);
         for (; winner == -1; playernow++, playernow %= 4)
         {
-            draw_n_discard(playernow);
+            if(draw_n_discard(playernow) == 1)
+            {
+                break;
+            }
             othersreaction(&playernow); // note that this is a value_result argument. just think about it and you will know why we do this.
         }
         // the game has set
-        game_set_display();
+        if(game_set_display() == 1)
+        {
+            // continue the game;
+        }
+        else 
+        {
+            // stop the game
+            break;
+        }
     }
     return 0;
 }
