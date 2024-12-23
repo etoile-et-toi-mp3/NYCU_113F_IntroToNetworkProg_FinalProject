@@ -31,7 +31,7 @@ struct mj {
 
 int flower_index = 0, door_index = 0, sea_index = 0, start_player = 0, normal_capacity = 16;
 
-//establish connection with the server
+// establish connection with the server
 int connection_establish() {
     connect(fd, (SA *)&serverinfo, serverlen);
     FD_SET(fd, &rset);
@@ -50,12 +50,12 @@ int connection_establish() {
                 printf("Server terminated prematurely!? Exiting...\n");
                 exit(1);
             }
-            else if (strcmp(recvline, "wait...\n") == 0)
+            else if (strncmp(recvline, "wait...\n", 8) == 0)
             {
                 // well... just wait for others to join
                 memset(recvline, 0, strlen(recvline));
             }
-            else if (strcmp(recvline, "start!\n") == 0)
+            else if (strncmp(recvline, "start!\n", 7) == 0)
             {
                 // game start!!!
                 memset(recvline, 0, strlen(recvline));
@@ -100,7 +100,7 @@ int get_decks() {
     for (;;)
     {
         read(fd, recvline, MAXLINE);
-        if (strcmp(recvline, "transfer complete\n") == 0)
+        if (strncmp(recvline, "transfer complete\n", 18) == 0)
         {
             break;
         }
@@ -160,17 +160,20 @@ void decks_quick_sort(struct mj *mjs, int start, int end) {
 
 int client_draw() {
     // get new mj;
+    printf("enter client_draw\n");
     read(fd, recvline, MAXLINE);
-    sscanf(recvline, "%d %d", &decks[16].type, &decks[16].number);
+    printf("recvline: %s", recvline);
+    sscanf(recvline, "%d %d", &decks[normal_capacity].type, &decks[normal_capacity].number);
+    printf("this is in int mode: %d, %d\n", decks[normal_capacity].type, decks[normal_capacity].number);
     memset(recvline, 0, strlen(recvline));
 
     // flower regrab
-    while (decks[16].type == FLOWER)
+    while (decks[normal_capacity].type == FLOWER)
     {
-        flowers[flower_index++] = decks[16];
+        flowers[flower_index++] = decks[normal_capacity];
 
         read(fd, recvline, MAXLINE);
-        sscanf(recvline, "%d %d\n", &decks[16].type, &decks[16].number);
+        sscanf(recvline, "%d %d\n", &decks[normal_capacity].type, &decks[normal_capacity].number);
         memset(recvline, 0, strlen(recvline));
     }
     return 0;
@@ -178,14 +181,14 @@ int client_draw() {
 
 int client_is_hu() {
     read(fd, recvline, MAXLINE);
-    if (strcmp(recvline, "can hu\n") == 0)
+    if (strncmp(recvline, "can hu\n", 7) == 0)
     {
         char answer[64];
         for (;;)
         {
             printf("You already suffice the conditions to win, proceed? [Y/n]\n");
             scanf("%s", answer);
-            if (strcmp(answer, "Y\n") == 0 || strcmp(answer, "\n") == 0)
+            if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
             {
                 // want to hu;
                 sprintf(sendline, "YES!\n");
@@ -193,7 +196,7 @@ int client_is_hu() {
                 memset(sendline, 0, strlen(sendline));
                 break;
             }
-            else if (strcmp(answer, "n\n") == 0)
+            else if (strncmp(answer, "n\n", 2) == 0)
             {
                 // don't want to hu;
                 sprintf(sendline, "NO!\n");
@@ -271,10 +274,10 @@ int client_discard() {
     write(fd, sendline, strlen(sendline));
     memset(sendline, 0, strlen(sendline));
 
-    swap(&decks[16], &decks[index]);
-    decks[16].type = 0;
-    decks[16].number = 0;
-    decks_quick_sort(decks, 0, 15);
+    swap(&decks[normal_capacity], &decks[index]);
+    decks[normal_capacity].type = 0;
+    decks[normal_capacity].number = 0;
+    decks_quick_sort(decks, 0, normal_capacity-1);
     return 0;
 }
 
@@ -302,7 +305,7 @@ int get_result() {
     for (;;)
     {
         scanf("%s", answer);
-        if (strcmp(answer, "Y\n") == 0 || strcmp(answer, "\n") == 0)
+        if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
         {
             // want to pong;
             sprintf(sendline, "YES!\n");
@@ -310,7 +313,7 @@ int get_result() {
             memset(sendline, 0, strlen(sendline));
             return 1;
         }
-        else if (strcmp(answer, "n\n") == 0)
+        else if (strncmp(answer, "n\n", 2) == 0)
         {
             // don't want to pong;
             sprintf(sendline, "NO!\n");
@@ -338,6 +341,7 @@ int print_deck() {
     {
         printf("%d ", decks[i].number);
     }
+    printf("\n");
     return 0;
 }
 
@@ -349,12 +353,24 @@ int receive_id() {
     return 0;
 }
 
+int client_game_init() {
+    discarded_mj.type = 0;
+    discarded_mj.number = 0;
+    flower_index = 0;
+    door_index = 0;
+    sea_index = 0;
+    normal_capacity = 16;
+    return 0;
+}
+
 int game() {
     receive_id();
-    /*
+
     for (int startplayer = 0; startplayer < 4; ++startplayer)
     {
+        client_game_init();
         get_decks();
+
         for (;;)
         {
             print_deck();
@@ -365,8 +381,9 @@ int game() {
             }
             else
             {
-                if (strcmp(recvline, "your turn\n") == 0)
+                if (strncmp(recvline, "your turn\n", 10) == 0)
                 {
+                    printf("YOURTURN: %s", recvline);
                     memset(recvline, 0, strlen(recvline));
                     // yeah it's your turn;
                     client_draw();
@@ -440,7 +457,7 @@ int game() {
                     printf("%s", recvline);
                     memset(recvline, 0, strlen(recvline));
                 }
-                else if (strcmp(recvline, "You can pong.\n") == 0)
+                else if (strncmp(recvline, "You can pong.\n", 15) == 0)
                 {
                     memset(recvline, 0, strlen(recvline));
                     // yeah someone discarded something that you can pong;
@@ -450,7 +467,7 @@ int game() {
                     {
                         printf("You can pong, proceed? [Y/n]\n");
                         scanf("%s", answer);
-                        if (strcmp(answer, "Y\n") == 0 || strcmp(answer, "\n") == 0)
+                        if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
                         {
                             // want to pong;
                             sprintf(sendline, "YES!\n");
@@ -491,7 +508,7 @@ int game() {
                             client_discard();
                             break;
                         }
-                        else if (strcmp(answer, "n\n") == 0)
+                        else if (strncmp(answer, "n\n", 2) == 0)
                         {
                             // don't want to pong;
                             sprintf(sendline, "NO!\n");
@@ -507,7 +524,7 @@ int game() {
                         }
                     }
                 }
-                else if (strcmp(recvline, "You can eat.\n") == 0)
+                else if (strncmp(recvline, "You can eat.\n", 13) == 0)
                 {
                     memset(recvline, 0, strlen(recvline));
                     // yeah someone discarded something that you can eat;
@@ -517,7 +534,7 @@ int game() {
                     {
                         printf("You can eat, proceed? [Y/n]\n");
                         scanf("%s", answer);
-                        if (strcmp(answer, "Y\n") == 0 || strcmp(answer, "\n") == 0)
+                        if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
                         {
                             memset(answer, 0, strlen(answer));
 
@@ -531,7 +548,7 @@ int game() {
                             for (;;)
                             {
                                 read(fd, recvline, MAXLINE);
-                                if (strcmp(recvline, "Type which 2 of the mjs you want to eat with: \n") == 0)
+                                if (strncmp(recvline, "Type which 2 of the mjs you want to eat with: \n", 47) == 0)
                                 {
                                     printf("%s", recvline);
                                     memset(recvline, 0, strlen(recvline));
@@ -542,7 +559,7 @@ int game() {
                                     memset(answer, 0, strlen(answer));
 
                                     read(fd, recvline, MAXLINE);
-                                    if (strcmp(recvline, "eatable.\n") == 0)
+                                    if (strncmp(recvline, "eatable.\n", 10) == 0)
                                     {
                                         // good eat;
                                         memset(recvline, 0, strlen(recvline));
@@ -575,7 +592,7 @@ int game() {
                             client_discard();
                             break;
                         }
-                        else if (strcmp(answer, "n\n") == 0)
+                        else if (strncmp(answer, "n\n", 2) == 0)
                         {
                             // don't want to eat;
                             sprintf(sendline, "NO!\n");
@@ -591,7 +608,7 @@ int game() {
                         }
                     }
                 }
-                else if (strcmp(recvline, "no one wants it.\n") == 0)
+                else if (strncmp(recvline, "no one wants it.\n", 17) == 0)
                 {
                     sea[sea_index++] = discarded_mj;
                     discarded_mj.type = 0;
@@ -600,6 +617,11 @@ int game() {
                 else if (strncmp(recvline, "(Game) ", 7) == 0)
                 {
                     break;
+                }
+                else
+                {
+                    printf("received this, please debug: %s", recvline);
+                    memset(recvline, 0, strlen(recvline));
                 }
             }
         }
@@ -613,7 +635,7 @@ int game() {
             break;
         }
     }
-    */
+
     return 0;
 }
 

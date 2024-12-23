@@ -59,11 +59,20 @@ struct player {
     socklen_t len;
     struct mj decks[20], flowers[8], door[20], sea[150];
 } *pre_players[4], *players[4];
-// two player arrays can ensure that listening server 
-// won't free the players too early s.t. child process 
+// two player arrays can ensure that listening server
+// won't free the players too early s.t. child process
 // couldn't access anything.
 
-//initialize player
+// initialize player's in-game info
+int player_gameinfo_init(struct player *p) {
+    p->flower_index = 0;
+    p->door_index = 0;
+    p->sea_index = 0;
+    p->normal_capacity = 16;
+    return 0;
+}
+
+// initialize player
 struct player *player_init() {
     struct player *p = malloc(sizeof(struct player));
     if (!p)
@@ -72,16 +81,13 @@ struct player *player_init() {
         exit(1);
     }
     memset(p, 0, sizeof(struct player));
-    p->fd = -1;
-    p->flower_index = 0;
-    p->door_index = 0;
-    p->sea_index = 0;
-    p->normal_capacity = 16;
     p->len = sizeof(struct sockaddr_in);
+    p->fd = -1;
+    player_gameinfo_init(p);
     return p;
 }
 
-//initialize connection
+// initialize connection
 int connection_preparation() {
     // set up serverinfo and listenfd
     memset(&serverinfo, 0, sizeof(serverinfo));
@@ -98,14 +104,6 @@ int connection_preparation() {
         printf("ERROR OCCURRED IN socket(), exiting...\n");
         exit(1);
     }
-
-    // Enable address reuse
-    // int opt = 1;
-    // if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
-    // {
-    // perror("setsockopt failed");
-    // exit(1);
-    // }
 
     if ((bind(listenfd, (SA *)&serverinfo, serverlen)) < 0)
     {
@@ -199,7 +197,7 @@ int connection_establish() {
     return 0;
 }
 
-//swap function
+// swap function
 void swap(struct mj *a, struct mj *b) {
     struct mj temp = *a;
     *a = *b;
@@ -207,8 +205,8 @@ void swap(struct mj *a, struct mj *b) {
     return;
 }
 
-//QUESTION!!
-// 堆牌山
+// QUESTION!!
+//  堆牌山
 void priority_quick_sort(struct mj *mjs, int start, int end) {
     if (start >= end)
     {
@@ -247,7 +245,7 @@ void priority_quick_sort(struct mj *mjs, int start, int end) {
     return;
 }
 
-//洗牌
+// 洗牌
 int shuffle() {
     int nowindex = 0;
 
@@ -415,7 +413,7 @@ int deal(int playernow) {
                 printf("ERROR OCCURED when transferring decks. exiting...\n");
                 exit(1);
             }
-            else if (strcmp(recvline, "ACK\n") == 0)
+            else if (strncmp(recvline, "ACK\n", 4) == 0)
             {
                 memset(recvline, 0, strlen(recvline));
             }
@@ -431,7 +429,7 @@ int deal(int playernow) {
                 printf("ERROR OCCURED when transferring flowers. exiting...\n");
                 exit(1);
             }
-            else if (strcmp(recvline, "ACK\n") == 0)
+            else if (strncmp(recvline, "ACK\n", 4) == 0)
             {
                 memset(recvline, 0, strlen(recvline));
             }
@@ -442,7 +440,6 @@ int deal(int playernow) {
     }
     return 0;
 }
-
 
 int shuffle_n_deal(int playernow) {
     shuffle();
@@ -470,6 +467,7 @@ int draw(int playernow) {
     players[playernow]->decks[players[playernow]->normal_capacity] = shuffled_mjs[take_index++];
 
     sprintf(sendline, "%d %d\n", players[playernow]->decks[players[playernow]->normal_capacity].type, players[playernow]->decks[players[playernow]->normal_capacity].number);
+    printf("%s", sendline);
     write(players[playernow]->fd, sendline, strlen(sendline));
     memset(sendline, 0, strlen(sendline));
 
@@ -479,6 +477,7 @@ int draw(int playernow) {
         players[playernow]->decks[players[playernow]->normal_capacity] = shuffled_mjs[take_index++];
 
         sprintf(sendline, "%d %d\n", players[playernow]->decks[players[playernow]->normal_capacity].type, players[playernow]->decks[players[playernow]->normal_capacity].number);
+        printf("%s", sendline);
         write(players[playernow]->fd, sendline, strlen(sendline));
         memset(sendline, 0, strlen(sendline));
     }
@@ -529,10 +528,10 @@ int hu_check(struct mj *decks, int nc) {
     // hu_check can sort the decks for its own purpose, but shouldn't modify the real deck;
     struct mj carbon[17];
     memset(carbon, 0, 17 * sizeof(struct mj));
-    memcpy(carbon, decks, nc + 1);
+    memcpy(carbon, decks, (nc + 1) * sizeof(struct mj));
 
-    struct mj mj_gotten = carbon[nc + 1];
-    int insertindex = nc;
+    struct mj mj_gotten = carbon[nc];
+    int insertindex = nc - 1;
     while (mj_compare(carbon[insertindex], mj_gotten) == -1)
     {
         carbon[insertindex + 1] = carbon[insertindex];
@@ -546,27 +545,23 @@ int hu_check(struct mj *decks, int nc) {
     insertindex++;
     carbon[insertindex] = mj_gotten;
 
-    for (int i = 0; i < nc + 1; ++i)
+    int count[34] = {0}; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
+    for (int j = 0; j < nc + 1; ++j)
     {
-        if (i + 1 < nc + 1 && mj_compare(carbon[i], carbon[i + 1]) == 0)
+        printf("this is what count is recording: index %d, %d\n", j, (carbon[j].type - 1) * 9 + carbon[j].number-1);
+        count[(carbon[j].type - 1) * 9 + carbon[j].number-1]++;
+    }
+    for (int i = 0; i < 34; ++i)
+    {
+        if (count[i] >= 2)
         {
-            // there exist a 一對 in this deck;
-            int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
-            memset(count, 0, 34 * sizeof(int));
-            for (int j = 0; j < nc + 1; ++j)
-            {
-                if (j == i || j == i + 1)
-                {
-                    continue;
-                }
-                count[(carbon[j].type - 1) * 9 + carbon[j].number]++;
-            }
-
+            count[i] -= 2;
             if (hu_recursive_check(count, nc - 1) == 1)
             {
                 // this deck can hu!
                 return 1;
             }
+            count[i] += 2;
         }
     }
     return 0;
@@ -576,11 +571,13 @@ int is_hu(int playernow) {
     if (hu_check(players[playernow]->decks, players[playernow]->normal_capacity) == 1)
     {
         sprintf(sendline, "can hu\n");
+        memset(recvline, 0, strlen(recvline));
+
         write(players[playernow]->fd, sendline, strlen(sendline));
         memset(sendline, 0, strlen(sendline));
 
         read(players[playernow]->fd, recvline, MAXLINE);
-        if (strcmp(recvline, "YES!\n") == 0)
+        if (strncmp(recvline, "YES!\n", 5) == 0)
         {
             // we have a winner here!
             winner = playernow;
@@ -596,6 +593,8 @@ int is_hu(int playernow) {
     else
     {
         sprintf(sendline, "cannot hu\n");
+        memset(recvline, 0, strlen(recvline));
+
         write(players[playernow]->fd, sendline, strlen(sendline));
         memset(sendline, 0, strlen(sendline));
     }
@@ -668,6 +667,7 @@ int discard(int playernow) {
 
 int draw_n_discard(int playernow) {
     sprintf(sendline, "your turn\n");
+    printf("%s", sendline);
     write(players[playernow]->fd, sendline, strlen(sendline));
     memset(sendline, 0, strlen(sendline));
 
@@ -753,7 +753,7 @@ int othersreaction(int *playernowp) {
         memset(sendline, 0, strlen(sendline));
 
         read(players[*playernowp + 1]->fd, recvline, MAXLINE);
-        if (strcmp(recvline, "YES!\n") == 0)
+        if (strncmp(recvline, "YES!\n", 5) == 0)
         {
             memset(recvline, 0, strlen(recvline));
 
@@ -813,7 +813,7 @@ int othersreaction(int *playernowp) {
         memset(sendline, 0, strlen(sendline));
 
         read(players[*playernowp + 2]->fd, recvline, MAXLINE);
-        if (strcmp(recvline, "YES!\n") == 0)
+        if (strncmp(recvline, "YES!\n", 5) == 0)
         {
             memset(recvline, 0, strlen(recvline));
             *playernowp = *playernowp + 2;
@@ -872,7 +872,7 @@ int othersreaction(int *playernowp) {
         memset(sendline, 0, strlen(sendline));
 
         read(players[*playernowp + 3]->fd, recvline, MAXLINE);
-        if (strcmp(recvline, "YES!\n") == 0)
+        if (strncmp(recvline, "YES!\n", 5) == 0)
         {
             memset(recvline, 0, strlen(recvline));
             *playernowp = *playernowp + 3;
@@ -932,7 +932,7 @@ int othersreaction(int *playernowp) {
         memset(sendline, 0, strlen(sendline));
 
         read(players[*playernowp + 1]->fd, recvline, MAXLINE);
-        if (strcmp(recvline, "YES!\n") == 0)
+        if (strncmp(recvline, "YES!\n", 5) == 0)
         {
             memset(recvline, 0, strlen(recvline));
 
@@ -1026,6 +1026,18 @@ int game_set_display() {
     return 0;
 }
 
+int game_init() {
+    winner = -1;
+    take_index = 0;
+    discarded_mj.type = 0;
+    discarded_mj.number = 0;
+    player_gameinfo_init(players[0]);
+    player_gameinfo_init(players[1]);
+    player_gameinfo_init(players[2]);
+    player_gameinfo_init(players[3]);
+    return 0;
+}
+
 int game() {
     // let the players know which id they are
     for (int i = 0; i < 4; ++i)
@@ -1035,9 +1047,10 @@ int game() {
         memset(sendline, 0, strlen(sendline));
     }
     printf("player ids given\n");
-    
+
     for (int startplayer = 0; startplayer < 4; ++startplayer)
     {
+        game_init();
         int playernow = startplayer;
         shuffle_n_deal(playernow);
         for (; winner == -1; playernow++, playernow %= 4)
@@ -1059,7 +1072,7 @@ int game() {
             break;
         }
     }
-    
+
     return 0;
 }
 

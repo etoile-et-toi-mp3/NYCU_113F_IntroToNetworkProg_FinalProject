@@ -27,12 +27,13 @@ int mjsame(mj a, mj b) {
 }
 
 int point(int base, int mul, mj *decks, mj last, int doorwind) {
-    sort(decks, decks + 16, [](mj a, mj b) {
-        return a.type * 100 + a.number < b.type * 100 + b.number;
-    });
+    // might use sort function in server
+    // sort(decks, decks + 16, [](mj a, mj b) {
+    //     return a.type * 100 + a.number < b.type * 100 + b.number;
+    // });
 
     int count=0, tmpcnt=0;
-    //中发白
+    // 中發白
     tmpcnt = 0;
     for (int i = 2; i < 16; i++) {
         if (decks[i].type == DAZI && decks[i].number >= 5 && decks[i].number <= 7) {
@@ -48,7 +49,7 @@ int point(int base, int mul, mj *decks, mj last, int doorwind) {
             tmpcnt = 0;
         }
     }
-    //东南西北
+    // 東南西北
     tmpcnt = 0;
     for (int i = 2; i < 16; i++) {
         if (decks[i].type == DAZI && decks[i].number >= 1 && decks[i].number <= 4) {
@@ -67,14 +68,14 @@ int point(int base, int mul, mj *decks, mj last, int doorwind) {
             tmpcnt = 0;
         }
     }
-    //中洞
+    // 中洞
     tmpcnt = 0;
     for (int i = 1; i < 16; i++) {
         if(decks[i].number == decks[i-1].number-2 && last.type == decks[i].type && last.number == decks[i].number-1) {
             count++;
         }
     }
-    //边张
+    // 邊張
     for(int i = 1; i < 16; i++) {
         if(decks[i].number == 2 && decks[i-1].number == 1 && decks[i].type == last.type && last.number == 3) {
             count++;
@@ -83,7 +84,7 @@ int point(int base, int mul, mj *decks, mj last, int doorwind) {
             count++;
         }
     }
-    //碰碰胡 4台
+    // 碰碰胡 4台
     tmpcnt = 0;
     for (int i = 2; i < 16; i++) {
         if(mjsame(decks[i], decks[i-1]) && mjsame(decks[i], decks[i-2])) 
