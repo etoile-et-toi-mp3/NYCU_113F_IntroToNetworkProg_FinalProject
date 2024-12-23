@@ -4,12 +4,6 @@ PROGS =	Mahjong_server Mahjong_client
 
 all:	${PROGS}
 
-tcpcli04:	tcpcli04.o
-		${CC} ${CFLAGS} -o $@ tcpcli04.o ${LIBS}
-
-tcpserv09:	tcpserv09.o
-		${CC} ${CFLAGS} -o $@ tcpserv09.o ${LIBS}
-
 Mahjong_server:	Mahjong_server.o
 		${CC} ${CFLAGS} -o $@ Mahjong_server.o ${LIBS}
 

@@ -21,7 +21,7 @@ struct mj {
     int priority;
 } decks[20], flowers[8], door[20], sea[150], discarded_mj;
 
-int flower_index = 0, door_index = 0, sea_index = 0, start_player = 0;
+int flower_index = 0, door_index = 0, sea_index = 0, start_player = 0, normal_capacity = 16;
 
 const int NO_TYPE = 0;
 const int TONG = 1;
@@ -276,6 +276,22 @@ int client_discard() {
     return 0;
 }
 
+int mj_compare(struct mj a, struct mj b) {
+    // if a > b => return -1
+    // if a = b => return 0
+    // if a < b => return 1
+
+    if (a.type == b.type && a.number == b.number)
+    {
+        return 0;
+    }
+    if (a.type > b.type || (a.type == b.type && a.number > b.number))
+    {
+        return -1;
+    }
+    return 1;
+}
+
 int get_result() {
     printf("%s", recvline);
     memset(recvline, 0, strlen(recvline));
@@ -310,16 +326,36 @@ int get_result() {
     return 0;
 }
 
-int game() {
+int print_deck() {
+    for (int i = 0; i < 16; ++i)
+    {
+        printf("%d ", decks[i].type);
+    }
+    printf("\n");
+    for (int i = 0; i < 16; ++i)
+    {
+        printf("%d ", decks[i].number);
+    }
+    return 0;
+}
+
+int receive_id() {
     read(fd, recvline, MAXLINE);
     id_num = (int)recvline[0] - '0';
     printf("This is your id: %d\n", id_num);
     memset(recvline, 0, strlen(recvline));
+    return 0;
+}
+
+int game() {
+    receive_id();
+    /*
     for (int startplayer = 0; startplayer < 4; ++startplayer)
     {
         get_decks();
         for (;;)
         {
+            print_deck();
             if (read(fd, recvline, MAXLINE) <= 0)
             {
                 printf("Server terminated prematurely!? Exiting...\n");
@@ -418,8 +454,36 @@ int game() {
                             sprintf(sendline, "YES!\n");
                             write(fd, sendline, strlen(sendline));
                             memset(sendline, 0, strlen(sendline));
-
-                            decks[16] = discarded_mj;
+                            door[door_index++] = discarded_mj;
+                            int need = 2;
+                            for (int i = 0; i < normal_capacity; ++i)
+                            {
+                                if (mj_compare(discarded_mj, decks[i]) == 0)
+                                {
+                                    door[door_index++] = discarded_mj;
+                                    decks[i].type = 0;
+                                    decks[i].number = 0;
+                                    need--;
+                                    if (need == 0)
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                            need = 2;
+                            for (int i = 0; i < normal_capacity; ++i)
+                            {
+                                if (decks[i].type == 0 && decks[i].number == 0)
+                                {
+                                    swap(&decks[i], &decks[normal_capacity - 3 + need]);
+                                    need--;
+                                    if (need == 0)
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+                            normal_capacity -= 3;
 
                             client_is_hu();
                             client_discard();
@@ -446,19 +510,64 @@ int game() {
                     memset(recvline, 0, strlen(recvline));
                     // yeah someone discarded something that you can eat;
 
-                    char answer[64];
+                    char answer[64] = {0};
                     for (;;)
                     {
                         printf("You can eat, proceed? [Y/n]\n");
                         scanf("%s", answer);
                         if (strcmp(answer, "Y\n") == 0 || strcmp(answer, "\n") == 0)
                         {
+                            memset(answer, 0, strlen(answer));
+
                             // want to eat;
                             sprintf(sendline, "YES!\n");
                             write(fd, sendline, strlen(sendline));
                             memset(sendline, 0, strlen(sendline));
 
-                            decks[16] = discarded_mj;
+                            int eatindex1, eatindex2;
+
+                            for (;;)
+                            {
+                                read(fd, recvline, MAXLINE);
+                                if (strcmp(recvline, "Type which 2 of the mjs you want to eat with: \n") == 0)
+                                {
+                                    printf("%s", recvline);
+                                    memset(recvline, 0, strlen(recvline));
+
+                                    scanf("%s", answer);
+                                    sscanf(answer, "%d %d", &eatindex1, &eatindex2);
+                                    write(fd, answer, strlen(answer));
+                                    memset(answer, 0, strlen(answer));
+
+                                    read(fd, recvline, MAXLINE);
+                                    if (strcmp(recvline, "eatable.\n") == 0)
+                                    {
+                                        // good eat;
+                                        memset(recvline, 0, strlen(recvline));
+                                        struct mj eat_temp[3];
+                                        eat_temp[0] = decks[eatindex1];
+                                        eat_temp[1] = decks[eatindex2];
+                                        eat_temp[2] = discarded_mj;
+                                        decks_quick_sort(eat_temp, 0, 2);
+                                        door[door_index++] = eat_temp[0];
+                                        door[door_index++] = eat_temp[1];
+                                        door[door_index++] = eat_temp[2];
+                                        decks[eatindex1].type = 0;
+                                        decks[eatindex1].number = 0;
+                                        decks[eatindex2].type = 0;
+                                        decks[eatindex2].number = 0;
+
+                                        normal_capacity -= 3;
+                                        decks_quick_sort(decks, 0, normal_capacity - 1);
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        printf("%s", recvline);
+                                        memset(recvline, 0, strlen(recvline));
+                                    }
+                                }
+                            }
 
                             client_is_hu();
                             client_discard();
@@ -492,16 +601,17 @@ int game() {
                 }
             }
         }
-        if(get_result() == 1)
+        if (get_result() == 1)
         {
             // continue the game
         }
-        else 
+        else
         {
             // stop the game
             break;
         }
     }
+    */
     return 0;
 }
 
@@ -523,6 +633,7 @@ int main(int argc, char **argv) {
     if (connection_establish() == 0)
     {
         game();
+        close(fd);
     }
     return 0;
 }

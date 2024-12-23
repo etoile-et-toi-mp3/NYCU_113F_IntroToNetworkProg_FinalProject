@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -I./unpv13e/lib -g -O2 -D_REENTRANT -Wall
+CFLAGS = -I./unpv13e/lib -g -O2 -D_REENTRANT -Wall -fsanitize=address
 LIBS = ./unpv13e/libunp.a -lpthread
 LIBS_XTI = ./unpv13e/libunpxti.a ./unpv13e/libunp.a -lpthread
 RANLIB = ranlib
