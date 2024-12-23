@@ -438,6 +438,25 @@ int mj_compare(struct mj a, struct mj b) {
     return 1;
 }
 
+int draw(int playernow) {
+    players[playernow]->decks[16] = shuffled_mjs[take_index++];
+
+    sprintf(sendline, "%d %d\n", players[playernow]->decks[16].type, players[playernow]->decks[16].number);
+    write(players[playernow]->fd, sendline, strlen(sendline));
+    memset(sendline, 0, strlen(sendline));
+
+    while (players[playernow]->decks[16].type == FLOWER)
+    {
+        players[playernow]->flowers[players[playernow]->flower_index++] = players[playernow]->decks[16];
+        players[playernow]->decks[16] = shuffled_mjs[take_index++];
+
+        sprintf(sendline, "%d %d\n", players[playernow]->decks[16].type, players[playernow]->decks[16].number);
+        write(players[playernow]->fd, sendline, strlen(sendline));
+        memset(sendline, 0, strlen(sendline));
+    }
+    return 0;
+}
+
 int hu_recursive_check(int *count, int n) {
     if (n == 0)
     {
@@ -447,9 +466,9 @@ int hu_recursive_check(int *count, int n) {
     for (int i = 0; i < 34; ++i)
     {
         // if there is 順子
-        if (count[i] >= 1 &&
-            i + 1 < 34 && count[i + 1] >= 1 &&
-            i + 2 < 34 && count[i + 2] >= 1 &&
+        if (i < 27 && count[i] >= 1 &&
+            i + 1 < 27 && count[i + 1] >= 1 &&
+            i + 2 < 27 && count[i + 2] >= 1 &&
             i / 9 == (i + 1) / 9 && i / 9 == (i + 2) / 9)
         {
             count[i]--;
@@ -521,25 +540,6 @@ int hu_check(struct mj *decks) {
                 return 1;
             }
         }
-    }
-    return 0;
-}
-
-int draw(int playernow) {
-    players[playernow]->decks[16] = shuffled_mjs[take_index++];
-
-    sprintf(sendline, "%d %d\n", players[playernow]->decks[16].type, players[playernow]->decks[16].number);
-    write(players[playernow]->fd, sendline, strlen(sendline));
-    memset(sendline, 0, strlen(sendline));
-
-    while (players[playernow]->decks[16].type == FLOWER)
-    {
-        players[playernow]->flowers[players[playernow]->flower_index++] = players[playernow]->decks[16];
-        players[playernow]->decks[16] = shuffled_mjs[take_index++];
-
-        sprintf(sendline, "%d %d\n", players[playernow]->decks[16].type, players[playernow]->decks[16].number);
-        write(players[playernow]->fd, sendline, strlen(sendline));
-        memset(sendline, 0, strlen(sendline));
     }
     return 0;
 }
