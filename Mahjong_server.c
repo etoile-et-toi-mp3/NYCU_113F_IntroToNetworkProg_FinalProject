@@ -63,6 +63,7 @@ struct player {
 // won't free the players too early s.t. child process 
 // couldn't access anything.
 
+//initialize player
 struct player *player_init() {
     struct player *p = malloc(sizeof(struct player));
     if (!p)
@@ -80,6 +81,7 @@ struct player *player_init() {
     return p;
 }
 
+//initialize connection
 int connection_preparation() {
     // set up serverinfo and listenfd
     memset(&serverinfo, 0, sizeof(serverinfo));
@@ -121,6 +123,7 @@ int connection_preparation() {
     return 0;
 }
 
+// establish connection with 4 players
 int connection_establish() {
     // wait until 4 stable connection is present
     for (;;)
@@ -196,6 +199,7 @@ int connection_establish() {
     return 0;
 }
 
+//swap function
 void swap(struct mj *a, struct mj *b) {
     struct mj temp = *a;
     *a = *b;
@@ -203,6 +207,8 @@ void swap(struct mj *a, struct mj *b) {
     return;
 }
 
+//QUESTION!!
+// 堆牌山
 void priority_quick_sort(struct mj *mjs, int start, int end) {
     if (start >= end)
     {
@@ -241,6 +247,7 @@ void priority_quick_sort(struct mj *mjs, int start, int end) {
     return;
 }
 
+//洗牌
 int shuffle() {
     int nowindex = 0;
 
@@ -305,6 +312,8 @@ int shuffle() {
     return 0;
 }
 
+// QUESTION!!
+// 花牌的處理
 int has_flower(struct player *p) {
     int flowercount = 0;
     for (int i = 0; i < 20; ++i)
@@ -319,6 +328,8 @@ int has_flower(struct player *p) {
     return flowercount;
 }
 
+// QUESTION!!
+// 理牌
 void decks_quick_sort(struct mj *mjs, int start, int end) {
     if (start >= end)
     {
@@ -354,6 +365,7 @@ void decks_quick_sort(struct mj *mjs, int start, int end) {
     decks_quick_sort(mjs, right + 1, end);
 }
 
+// 發牌、花牌補花、理牌
 int deal(int playernow) {
     for (int time = 0; time < 4; ++time)
     {
@@ -430,6 +442,7 @@ int deal(int playernow) {
     }
     return 0;
 }
+
 
 int shuffle_n_deal(int playernow) {
     shuffle();
@@ -1022,7 +1035,7 @@ int game() {
         memset(sendline, 0, strlen(sendline));
     }
     printf("player ids given\n");
-    /*
+    
     for (int startplayer = 0; startplayer < 4; ++startplayer)
     {
         int playernow = startplayer;
@@ -1046,7 +1059,7 @@ int game() {
             break;
         }
     }
-    */
+    
     return 0;
 }
 

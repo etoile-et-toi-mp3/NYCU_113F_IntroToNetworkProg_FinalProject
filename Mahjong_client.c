@@ -6,6 +6,14 @@
 
 #include "unp.h"
 
+// the following variables are for game purposes;
+const int NO_TYPE = 0;
+const int TONG = 1;
+const int TIAO = 2;
+const int WAN = 3;
+const int DAZI = 4;   // it goes with 東南西北中發白;
+const int FLOWER = 5; // it goes with 春夏秋冬梅蘭竹菊;
+
 // the following variables are for connection purposes;
 int fd;
 struct sockaddr_in serverinfo;
@@ -23,13 +31,7 @@ struct mj {
 
 int flower_index = 0, door_index = 0, sea_index = 0, start_player = 0, normal_capacity = 16;
 
-const int NO_TYPE = 0;
-const int TONG = 1;
-const int TIAO = 2;
-const int WAN = 3;
-const int DAZI = 4;   // it goes with 東南西北中發白;
-const int FLOWER = 5; // it goes with 春夏秋冬梅蘭竹菊;
-
+//establish connection with the server
 int connection_establish() {
     connect(fd, (SA *)&serverinfo, serverlen);
     FD_SET(fd, &rset);
