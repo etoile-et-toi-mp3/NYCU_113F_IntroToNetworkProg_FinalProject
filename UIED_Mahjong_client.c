@@ -649,49 +649,49 @@ int game() {
                     printf("%s", recvline);
 
                     // record the discarded mj
-                    if ('A' <= recvline[19] && recvline[19] <= 'Z')
+                    if ('A' <= recvline[29] && recvline[29] <= 'Z')
                     {
                         // this is a DAZI;
                         discarded_mj.type = DAZI;
-                        if (recvline[19] == 'E')
+                        if (recvline[29] == 'E')
                         {
                             discarded_mj.number = 1;
                         }
-                        else if (recvline[19] == 'S')
+                        else if (recvline[29] == 'S')
                         {
                             discarded_mj.number = 2;
                         }
-                        else if (recvline[19] == 'W')
+                        else if (recvline[29] == 'W')
                         {
                             discarded_mj.number = 3;
                         }
-                        else if (recvline[19] == 'N')
+                        else if (recvline[29] == 'N')
                         {
                             discarded_mj.number = 4;
                         }
-                        else if (recvline[19] == 'Z')
+                        else if (recvline[29] == 'Z')
                         {
                             discarded_mj.number = 5;
                         }
-                        else if (recvline[19] == 'F')
+                        else if (recvline[29] == 'F')
                         {
                             discarded_mj.number = 6;
                         }
-                        else if (recvline[19] == 'B')
+                        else if (recvline[29] == 'B')
                         {
                             discarded_mj.number = 7;
                         }
                     }
                     else
                     {
-                        discarded_mj.number = recvline[19] - '0';
-                        if (recvline[21] == 'W')
+                        discarded_mj.number = recvline[29] - '0';
+                        if (recvline[31] == 'W')
                         {
                             discarded_mj.type = WAN;
                         }
                         else
                         {
-                            if (recvline[22] == 'O')
+                            if (recvline[32] == 'O')
                             {
                                 discarded_mj.type == TONG;
                             }
@@ -725,14 +725,19 @@ int game() {
                             write_message_wait_ack(fd, "YES!\n");
 
                             door[door_index++] = discarded_mj;
-                            discarded_mj.number = 0;
-                            discarded_mj.type = 0;
+                            door[door_index++] = discarded_mj;
+                            door[door_index++] = discarded_mj;
+
                             int need = 2;
                             for (int i = 0; i < normal_capacity; ++i)
                             {
+                                printf("this is cmp value: %d\n", mj_compare(discarded_mj, decks[i]));
+                                printf("this is discarded: %d, %d\n", discarded_mj.type, discarded_mj.number);
+                                printf("this is decks[%d]: %d, %d\n", i, decks[i].type, decks[i].number);
+                                
                                 if (mj_compare(discarded_mj, decks[i]) == 0)
                                 {
-                                    door[door_index++] = discarded_mj;
+                                    printf("erased a mj: %d", i);
                                     decks[i].type = 0;
                                     decks[i].number = 0;
                                     need--;
@@ -742,6 +747,7 @@ int game() {
                                     }
                                 }
                             }
+
                             need = 2;
                             for (int i = 0; i < normal_capacity; ++i)
                             {
@@ -755,7 +761,10 @@ int game() {
                                     }
                                 }
                             }
+
                             normal_capacity -= 3;
+                            discarded_mj = EMPTY_MJ;
+
                             print_deck(decks, door, EMPTY_MJ, 0, 1);
 
                             client_is_hu();
