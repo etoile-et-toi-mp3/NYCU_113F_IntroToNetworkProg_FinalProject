@@ -309,6 +309,7 @@ void priority_quick_sort(struct mj *mjs, int start, int end) {
 
 // 洗牌
 int shuffle() {
+    memset(shuffled_mjs, 0, 144 * sizeof(struct mj));
     int nowindex = 0;
 
     // TONG first
