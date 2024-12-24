@@ -821,8 +821,8 @@ int discard(int playernow) {
     int index;
     sscanf(recvline, "%d", &index);
     printf("player %d discarded index %d: %d, %d\n", playernow, index, discarded_mj.type, discarded_mj.number);
-    memset(read, 0, strlen(recvline));
-
+    memset(recvline, 0, strlen(recvline));
+    printf("played: %d %d\n",players[playernow]->decks[index].type, players[playernow]->decks[index].number);
     discarded_mj.type = players[playernow]->decks[index].type;
     discarded_mj.number = players[playernow]->decks[index].number;
 
