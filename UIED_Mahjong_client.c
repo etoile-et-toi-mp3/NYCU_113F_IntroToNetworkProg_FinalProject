@@ -220,175 +220,99 @@ void decks_quick_sort(struct mj *mjs, int start, int end) {
     decks_quick_sort(mjs, right + 1, end);
 }
 
-void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
-    // if last is played by other
-    if (hu == 0 && last.type != 0)
-    {
-        printf("other player played: \n");
-        printf("___\n");
-        if (last.type == 4)
-        {
-            printf("|%s|\n", wind_number[last.number]);
-        }
-        else
-            printf("|%s|\n", number[last.number]);
-        if (last.type == 4 && last.number > 4)
-        {
+void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index) {
+    //print the board card
+    if(on_board.type != 0 && on_board.number != 0) {
+        printf("card on table: \n");
+        printf("____\n");
+        if(on_board.type == 4) {
+            printf("|%s|\n", wind_number[on_board.number]);
+        } else printf("|%s|\n", number[on_board.number]);
+        if(on_board.type == 4 && on_board.number > 4) {
             printf("|  |\n");
-        }
-        else
-            printf("|%s|\n", type[last.type]);
-        printf("‾‾‾\n");
+        } else printf("|%s|\n", type[on_board.type]);
+        printf("‾‾‾‾\n");
     }
-    if (hu == 1)
-        printf("You are really good at this game! \nresult:\n");
-    else
-        printf("Your decks: \n");
-    // print index
-    if (you_to_play)
-    {
-        for (int i = 0; i < 20; ++i)
-        {
-            if (hands[i].type == 0 && hands[i].number == 0)
-            {
-                break;
-            }
-            if (i >= 10)
-                printf(" %d", i);
-            else
-                printf(" 0%d", i);
+    //print the index
+    if(show_index) {
+        for(int i = 0; i < 20; i++) {
+            if(hands[i].type == 0 && hands[i].number == 0)break;
+            if(hands[i+1].type == 0 && hands[i+1].number == 0 && separate)printf("   ");
+            if(i >= 10)printf(" %d", i);
+            else printf(" 0%d", i);
         }
         printf("\n");
     }
 
-    for (int i = 0; i < 20; ++i)
-    {
-        if (hands[i].type == 0 && hands[i].number == 0)
-        {
-            break;
-        }
+    //print the cap
+    printf("_");
+    for(int i = 0; i < 20; i++) {
+        if(hands[i].type == 0 && hands[i].number == 0)break;
+        if(hands[i+1].type == 0 && hands[i+1].number == 0 && separate)printf("  _");
         printf("___");
     }
-    printf("_\t");
-    if (hu && last.type != 0)
-    {
+    printf("\t\t_");
+    for(int i = 0; i < 20; i++) {
+        if(doors[i].type == 0 && doors[i].number == 0)break;
         printf("___");
     }
-    printf("\t\t");
-    for (int i = 0; i < 20; ++i)
-    {
-        if (doors[i].type == 0 && doors[i].number == 0)
-        {
-            break;
-        }
-        printf("___");
-    }
-    printf("_\n");
+    printf("\n");
 
-    // print the number
+    //print the number
+    printf("|");
+    for(int i = 0; i < 20; i++) {
+        if(hands[i].type == 0 && hands[i].number == 0) {
+            break;
+        }
+        if(hands[i+1].type == 0 && hands[i+1].number == 0 && separate)printf("  |");
+        if(hands[i].type == 4) {
+            printf("%s|", wind_number[hands[i].number]);
+        } else printf("%s|", number[hands[i].number]);
+    }
+    printf("\t\t|");
+    for (int i = 0; i < 20; ++i){
+        if(doors[i].type == 0 && doors[i].number == 0) {
+            break;
+        }
+        if(doors[i].type == 4) {
+            printf("%s|", wind_number[doors[i].number]);
+        } else printf("%s|", number[doors[i].number]);
+    }
+    printf("\n");
+
+    //print the type
     printf("|");
     for (int i = 0; i < 20; ++i)
     {
-        if (hands[i].type == 0 && hands[i].number == 0)
-        {
-            break;
-        }
-        if (hands[i].type == 4)
-        {
-            printf("%s|", wind_number[hands[i].number]);
-        }
-        else
-            printf("%s|", number[hands[i].number]);
+        if(hands[i].type == 0 && hands[i].number == 0)break;
+        if(hands[i+1].type == 0 && hands[i+1].number == 0 && separate)printf("  |");
+        if(hands[i].type == 4 && hands[i].number > 4) printf("  |");
+        else printf("%s|", type[hands[i].type]);
     }
-    printf("\t");
-    if (hu && last.type != 0)
-    {
-        if (last.type == 4)
-        {
-            printf("|%s|", wind_number[last.number]);
-        }
-        else
-            printf("|%s|", number[last.number]);
-    }
-
     printf("\t\t|");
-    for (int i = 0; i < 20; ++i)
-    {
-        if (doors[i].type == 0 && doors[i].number == 0)
-        {
+    for(int i = 0; i < 20; i++) {
+        if(doors[i].type == 0 && doors[i].number == 0) {
             break;
         }
-        if (doors[i].type == 4)
-        {
-            printf("%s|", wind_number[doors[i].number]);
-        }
-        else
-            printf("%s|", number[doors[i].number]);
+        if(doors[i].type == 4 && doors[i].number > 4) printf("  |");
+        else printf("%s|", type[doors[i].type]);
     }
-    // end of print the number
     printf("\n");
-    // print the type
-    for (int i = 0; i < 20; ++i)
-    {
-        if (hands[i].type == 0 && hands[i].number == 0)
-        {
-            break;
-        }
-        if (hands[i].type == 4 && hands[i].number > 4)
-            printf("|  ");
-        else
-            printf("|%s", type[hands[i].type]);
-    }
-    printf("|\t");
-    if (hu && last.type != 0)
-    {
-        if (last.type == 4 && last.number > 4)
-        {
-            printf("|  ");
-        }
-        else
-            printf("|%s", type[last.type]);
-    }
-    if (hu)
-        printf("|");
-    printf("\t\t");
-    for (int i = 0; i < 20; i++)
-    {
-        if (doors[i].type == 0 && doors[i].number == 0)
-        {
-            break;
-        }
-        if (doors[i].type == 4 && doors[i].number > 4)
-            printf("|  ");
-        else
-            printf("|%s", type[doors[i].type]);
-    }
-    printf("|\n");
-    // end of print the type
-    for (int i = 0; i < 20; ++i)
-    {
-        if (hands[i].type == 0 && hands[i].number == 0)
-        {
-            break;
-        }
+
+    //print under
+    printf("‾");
+    for(int i = 0; i < 20; i++) {
+        if(hands[i].type == 0 && hands[i].number == 0)break;
+        if(hands[i+1].type == 0 && hands[i+1].number == 0 && separate)printf("  ‾");
         printf("‾‾‾");
     }
-    printf("‾\t");
-    if (hu && last.type != 0)
-    {
+    printf("\t\t‾");
+    for(int i = 0; i < 20; i++) {
+        if(doors[i].type == 0 && doors[i].number == 0)break;
         printf("‾‾‾");
     }
-    printf("\t\t");
-    for (int i = 0; i < 20; ++i)
-    {
-        if (doors[i].type == 0 && doors[i].number == 0)
-        {
-            break;
-        }
-        printf("‾‾‾");
-    }
-    printf("‾\n");
-    return;
+    printf("\n");
+
 }
 
 void print_single_card(mj a) {
@@ -468,7 +392,7 @@ int client_is_hu() {
 }
 
 int client_discard() {
-    print_deck(decks, door, EMPTY_MJ, 0, 1);
+    print_deck(decks, door, EMPTY_MJ, 1, 1);
     int index = -1;
     for (;;)
     {
@@ -651,8 +575,8 @@ int game() {
                     memset(recvline, 0, strlen(recvline));
                     // yeah it's your turn;
                     client_draw();
-                    print_deck(decks, door, discarded_mj, 0, 1);
-                    if (client_is_hu() == 1)
+                    print_deck(decks, door, discarded_mj, 1, 1);
+                    if(client_is_hu() == 1)
                     {
                         // really won
                         printf("continuing in 654.\n");

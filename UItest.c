@@ -16,7 +16,7 @@ char type[10][10]={"NULL","萬", "筒", "條", "風", "花"};
 void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
     //if last is played by other
     if(hu==0 && last.type != 0) {
-        printf("other player played: \n");
+        printf("lastest card on the table: \n");
         printf("___\n");
         if(last.type == 4) {
             printf("|%s|\n", wind_number[last.number]);
