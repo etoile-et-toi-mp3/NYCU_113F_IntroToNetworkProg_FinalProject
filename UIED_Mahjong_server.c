@@ -800,8 +800,9 @@ int is_hu(int playernow) {
         if (strncmp(recvline, "YES!\n", 5) == 0)
         {
             // we have a winner here!
-            winner = playernow;
             memset(recvline, 0, strlen(recvline));
+            printf("(in is_hu __LINE__ == 803) we have a winner here!\n");
+            winner = playernow;
             return 1;
         }
         else
@@ -906,6 +907,7 @@ int draw_n_discard(int playernow) {
     draw(playernow);
     if (is_hu(playernow) == 1)
     {
+        printf("is hu in 910, ready to return 1\n");
         return 1;
     }
     print_deck(players[playernow]->decks, players[playernow]->door, discarded_mj, 0, 1);
@@ -1028,21 +1030,17 @@ int othersreaction(int *playernowp) {
             discarded_mj.number = 0;
             discarded_mj.type = 0;
 
-            is_hu(*playernowp);
+            if (is_hu(*playernowp) == 1)
+            {
+                return 1;
+            }
             discard(*playernowp);
             othersreaction(playernowp);
+            memset(recvline, 0, strlen(recvline));
+            return 0;
         }
-        else
-        {
-            write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
-
-            players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
-            discarded_mj.type = 0;
-            discarded_mj.number = 0;
-        }
-        memset(recvline, 0, strlen(recvline));
     }
-    else if (is_pong_possible(players[(*playernowp + 2) % 4]->decks, players[(*playernowp + 2) % 4]->normal_capacity) == 1)
+    if (is_pong_possible(players[(*playernowp + 2) % 4]->decks, players[(*playernowp + 2) % 4]->normal_capacity) == 1)
     {
         write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "You can pong.\n");
         read_and_ack(players[(*playernowp + 2) % 4]->fd);
@@ -1089,21 +1087,17 @@ int othersreaction(int *playernowp) {
             discarded_mj.number = 0;
             discarded_mj.type = 0;
 
-            is_hu(*playernowp);
+            if (is_hu(*playernowp) == 1)
+            {
+                return 1;
+            }
             discard(*playernowp);
             othersreaction(playernowp);
+            memset(recvline, 0, strlen(recvline));
+            return 0;
         }
-        else
-        {
-            write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
-
-            players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
-            discarded_mj.type = 0;
-            discarded_mj.number = 0;
-        }
-        memset(recvline, 0, strlen(recvline));
     }
-    else if (is_pong_possible(players[(*playernowp + 3) % 4]->decks, players[(*playernowp + 3) % 4]->normal_capacity) == 1)
+    if (is_pong_possible(players[(*playernowp + 3) % 4]->decks, players[(*playernowp + 3) % 4]->normal_capacity) == 1)
     {
         write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "You can pong.\n");
         read_and_ack(players[(*playernowp + 3) % 4]->fd);
@@ -1150,22 +1144,18 @@ int othersreaction(int *playernowp) {
             discarded_mj.number = 0;
             discarded_mj.type = 0;
 
-            is_hu(*playernowp);
+            if (is_hu(*playernowp) == 1)
+            {
+                return 1;
+            }
             discard(*playernowp);
             othersreaction(playernowp);
+            memset(recvline, 0, strlen(recvline));
+            return 0;
         }
-        else
-        {
-            write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
-
-            players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
-            discarded_mj.type = 0;
-            discarded_mj.number = 0;
-        }
-        memset(recvline, 0, strlen(recvline));
     }
     // Case 2: 下家 may be able to 吃
-    else if (is_eat_possible(players[(*playernowp + 1) % 4]->decks, players[(*playernowp + 1) % 4]->normal_capacity) == 1)
+    if (is_eat_possible(players[(*playernowp + 1) % 4]->decks, players[(*playernowp + 1) % 4]->normal_capacity) == 1)
     {
         write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "You can eat.\n");
         read_and_ack(players[(*playernowp + 1) % 4]->fd);
@@ -1220,44 +1210,72 @@ int othersreaction(int *playernowp) {
             discarded_mj.number = 0;
             discarded_mj.type = 0;
 
-            is_hu(*playernowp);
+            if (is_hu(*playernowp) == 1)
+            {
+                return 1;
+            }
             discard(*playernowp);
             othersreaction(playernowp);
+            memset(recvline, 0, strlen(recvline));
+            return 0;
         }
-        else
-        {
-            write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
-
-            players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
-            discarded_mj.type = 0;
-            discarded_mj.number = 0;
-        }
-        memset(recvline, 0, strlen(recvline));
     }
     // Case 3: no players can do anything
-    else
-    {
-        write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
+    write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
 
-        players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
-        discarded_mj.type = 0;
-        discarded_mj.number = 0;
-    }
+    players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
+    discarded_mj.type = 0;
+    discarded_mj.number = 0;
     return 0;
 }
 
 int game_set_display() {
-    sprintf(sendline, "(Game) The game is set and we have a winner: %d!!!\nContinue for next round? [Y/n]", winner);
-    write(players[0]->fd, sendline, strlen(sendline));
-    write(players[1]->fd, sendline, strlen(sendline));
-    write(players[2]->fd, sendline, strlen(sendline));
-    write(players[3]->fd, sendline, strlen(sendline));
-    memset(sendline, 0, strlen(sendline));
+    printf("ENTERING GAMESETDISPLAY\n");
 
-    // wait until everyone said yes
-    // if so, return 1 to restart the game (get back in the loop)
+    int newgame_count = 0;
+
+    read_and_ack(players[0]->fd);
+    if (strncmp(recvline, "YES!\n", 5) == 0)
+    {
+        newgame_count++;
+    }
+    memset(recvline, 0, strlen(recvline));
+
+    read_and_ack(players[1]->fd);
+    if (strncmp(recvline, "YES!\n", 5) == 0)
+    {
+        newgame_count++;
+    }
+    memset(recvline, 0, strlen(recvline));
+
+    read_and_ack(players[2]->fd);
+    if (strncmp(recvline, "YES!\n", 5) == 0)
+    {
+        newgame_count++;
+    }
+    memset(recvline, 0, strlen(recvline));
+
+    read_and_ack(players[3]->fd);
+    if (strncmp(recvline, "YES!\n", 5) == 0)
+    {
+        newgame_count++;
+    }
+    memset(recvline, 0, strlen(recvline));
+
+    if (newgame_count == 4)
+    {
+        // return 1 to restart the game (get back in the loop)
+        write_message_wait_ack(players[0]->fd, "start!\n");
+        write_message_wait_ack(players[1]->fd, "start!\n");
+        write_message_wait_ack(players[2]->fd, "start!\n");
+        write_message_wait_ack(players[3]->fd, "start!\n");
+        return 1;
+    }
+    write_message_wait_ack(players[0]->fd, "no more game!\n");
+    write_message_wait_ack(players[1]->fd, "no more game!\n");
+    write_message_wait_ack(players[2]->fd, "no more game!\n");
+    write_message_wait_ack(players[3]->fd, "no more game!\n");
     // otherwise, return 0 to stop the game
-
     return 0;
 }
 
@@ -1291,11 +1309,21 @@ int game() {
         {
             if (draw_n_discard(playernow) == 1)
             {
+                printf("(line 1331) breaking from dnd\n");
                 break;
             }
-            othersreaction(&playernow); // note that this is a value_result argument. just think about it and you will know why we do this.
+            if (othersreaction(&playernow) == 1) // note that this is a value_result argument. just think about it and you will know why we do this.
+            {
+                printf("(line 1348) breaking cause othersreaction == 1\n");
+                break;
+            }
         }
         printf("a player end their turn\n");
+        write_message_wait_ack(players[0]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
+        write_message_wait_ack(players[1]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
+        write_message_wait_ack(players[2]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
+        write_message_wait_ack(players[3]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
+        printf("ALL WRITTEN AND ACKED\n");
         // the game has set
         if (game_set_display() == 1)
         {

@@ -442,6 +442,7 @@ int client_is_hu() {
                 // want to hu;
                 write_message_wait_ack(fd, "YES!\n");
                 memset(recvline, 0, strlen(recvline));
+                printf("(line 445) exiting client_is_hu with 1\n");
                 return 1;
             }
             else if (strncmp(answer, "n\n", 2) == 0)
@@ -473,7 +474,7 @@ int client_discard() {
     {
         printf("Choose a mj and discard it...!\n");
         scanf("%d", &index);
-        if (0 <= index && index < 17)
+        if (0 <= index && index < normal_capacity + 1)
         {
             break;
         }
@@ -555,7 +556,8 @@ int mj_compare(struct mj a, struct mj b) {
     return 1;
 }
 
-int get_result() {
+int client_game_set() {
+    printf("ENTERING CLIENT GAME SET\n");
     printf("%s", recvline);
     memset(recvline, 0, strlen(recvline));
 
@@ -565,19 +567,17 @@ int get_result() {
         read(STDIN_FILENO, answer, 64);
         if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
         {
-            // want to pong;
-            sprintf(sendline, "YES!\n");
-            write(fd, sendline, strlen(sendline));
-            memset(sendline, 0, strlen(sendline));
-            return 1;
+            // want to play new game;
+            write_message_wait_ack(fd, "YES!\n");
+            printf("GOT SERVER APPROVAL\n");
+            break;
         }
         else if (strncmp(answer, "n\n", 2) == 0)
         {
-            // don't want to pong;
-            sprintf(sendline, "NO!\n");
-            write(fd, sendline, strlen(sendline));
-            memset(sendline, 0, strlen(sendline));
-            return 0;
+            // don't want to play new game;
+            write_message_wait_ack(fd, "NO!\n");
+            printf("GOT SERVER APPROVAL\n");
+            break;
         }
         else
         {
@@ -585,6 +585,19 @@ int get_result() {
             // back into the loop until correct response is given.
             memset(answer, 0, strlen(answer));
         }
+    }
+
+    read_and_ack(fd);
+    if (strncmp(recvline, "start!\n", 8) == 0)
+    {
+        // new game start
+        memset(recvline, 0, strlen(recvline));
+        return 1;
+    }
+    else if (strncmp(recvline, "no more game!\n", 14) == 0)
+    {
+        memset(recvline, 0, strlen(recvline));
+        return 0;
     }
     return 0;
 }
@@ -598,6 +611,10 @@ int receive_id() {
 }
 
 int client_game_init() {
+    memset(decks, 0, 20 * sizeof(struct mj));
+    memset(flowers, 0, 8 * sizeof(struct mj));
+    memset(door, 0, 20 * sizeof(struct mj));
+    memset(sea, 0, 150 * sizeof(struct mj));
     discarded_mj.type = 0;
     discarded_mj.number = 0;
     flower_index = 0;
@@ -635,9 +652,10 @@ int game() {
                     // yeah it's your turn;
                     client_draw();
                     print_deck(decks, door, discarded_mj, 0, 1);
-                    if(client_is_hu() == 1)
+                    if (client_is_hu() == 1)
                     {
                         // really won
+                        printf("continuing in 654.\n");
                         continue;
                     }
                     client_discard();
@@ -764,9 +782,10 @@ int game() {
 
                             decks_quick_sort(decks, 0, normal_capacity);
 
-                            if(client_is_hu() == 1)
+                            if (client_is_hu() == 1)
                             {
                                 // really won
+                                printf("breaking in 784, hu kakutei after pong\n");
                                 break;
                             }
                             client_discard();
@@ -850,9 +869,10 @@ int game() {
 
                             decks_quick_sort(decks, 0, normal_capacity);
 
-                            if(client_is_hu() == 1)
+                            if (client_is_hu() == 1)
                             {
                                 // really won
+                                printf("breaking in 871, hu kakutei after eat\n");
                                 break;
                             }
                             client_discard();
@@ -882,8 +902,7 @@ int game() {
                 }
                 else if (strncmp(recvline, "(Game) ", 7) == 0)
                 {
-                    memset(recvline, 0, strlen(recvline));
-
+                    // the game has set;
                     break;
                 }
                 else
@@ -893,7 +912,8 @@ int game() {
                 }
             }
         }
-        if (get_result() == 1)
+        printf("here at 911, you are out of the main loop!!!\n");
+        if (client_game_set() == 1)
         {
             // continue the game
         }
