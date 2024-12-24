@@ -774,7 +774,7 @@ int hu_check(struct mj *decks, int nc) {
     int count[34] = {0}; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
     for (int j = 0; j < nc + 1; ++j)
     {
-        printf("%d: %d\n",j,(carbon[j].type - 1) * 9 + carbon[j].number - 1);
+        printf("%d: %d\n", j, (carbon[j].type - 1) * 9 + carbon[j].number - 1);
         count[(carbon[j].type - 1) * 9 + carbon[j].number - 1]++;
     }
     for (int i = 0; i < 34; ++i)
@@ -831,7 +831,7 @@ int discard(int playernow) {
     players[playernow]->decks[players[playernow]->normal_capacity].type = 0;
     players[playernow]->decks[players[playernow]->normal_capacity].number = 0;
 
-    decks_quick_sort(players[playernow]->decks, 0, players[playernow]->normal_capacity-1);
+    decks_quick_sort(players[playernow]->decks, 0, players[playernow]->normal_capacity - 1);
 
     if (discarded_mj.type == TONG)
     {
@@ -1096,8 +1096,8 @@ int othersreaction(int *playernowp) {
     }
     else if (is_pong_possible(players[(*playernowp + 3) % 4]->decks, players[(*playernowp + 3) % 4]->normal_capacity) == 1)
     {
-        write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "You can pong.\n");
-        read_and_ack(players[(*playernowp + 2) % 4]->fd);
+        write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "You can pong.\n");
+        read_and_ack(players[(*playernowp + 3) % 4]->fd);
         if (strncmp(recvline, "YES!\n", 5) == 0)
         {
             *playernowp = (*playernowp + 3) % 4;
@@ -1160,8 +1160,9 @@ int othersreaction(int *playernowp) {
             {
                 write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "Type which 2 of the mjs you want to eat with: \n");
                 read_and_ack(players[(*playernowp + 1) % 4]->fd);
-                int eatindex1, eatindex2;
+                int eatindex1 = -1, eatindex2 = -1;
                 sscanf(recvline, "%d %d", &eatindex1, &eatindex2);
+                printf("These are indexes: %d, %d\n", eatindex1, eatindex2);
                 memset(recvline, 0, strlen(recvline));
                 struct mj eat_temp[3];
                 eat_temp[0] = players[(*playernowp + 1) % 4]->decks[eatindex1];
@@ -1183,8 +1184,8 @@ int othersreaction(int *playernowp) {
                     players[(*playernowp + 1) % 4]->decks[eatindex2].type = 0;
                     players[(*playernowp + 1) % 4]->decks[eatindex2].number = 0;
 
-                    players[(*playernowp + 1) % 4]->normal_capacity -= 3;
-                    decks_quick_sort(players[(*playernowp + 1) % 4]->decks, 0, players[*playernowp]->normal_capacity - 1);
+                    swap(&players[(*playernowp + 1) % 4]->decks[eatindex1], &players[(*playernowp + 1) % 4]->decks[players[(*playernowp + 1) % 4]->normal_capacity - 1]);
+                    swap(&players[(*playernowp + 1) % 4]->decks[eatindex2], &players[(*playernowp + 1) % 4]->decks[players[(*playernowp + 1) % 4]->normal_capacity - 2]);
                     break;
                 }
                 else
@@ -1194,8 +1195,8 @@ int othersreaction(int *playernowp) {
             }
 
             *playernowp = (*playernowp + 1) % 4;
-
-            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity-1);
+            players[*playernowp]->normal_capacity -= 3;
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity - 1);
 
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);
@@ -1261,7 +1262,6 @@ int game() {
         write(players[i]->fd, sendline, strlen(sendline));
         memset(sendline, 0, strlen(sendline));
     }
-    printf("player ids given\n");
 
     for (int startplayer = 0; startplayer < 4; ++startplayer)
     {
@@ -1293,6 +1293,7 @@ int game() {
 }
 
 int main(int argc, char **argv) {
+    system("clear");
     signal(SIGCHLD, sig_chld);
     srand(time(NULL));
     for (int i = 0; i < 4; ++i)

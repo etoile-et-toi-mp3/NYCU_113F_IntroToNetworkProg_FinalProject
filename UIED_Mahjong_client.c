@@ -614,6 +614,7 @@ int client_game_init() {
 
 int game() {
     receive_id();
+    system("clear");
 
     for (int startplayer = 0; startplayer < 4; ++startplayer)
     {
@@ -802,7 +803,7 @@ int game() {
                             // want to eat;
                             write_message_wait_ack(fd, "YES!\n");
 
-                            int eatindex1, eatindex2;
+                            int eatindex1 = -1, eatindex2 = -1;
                             print_deck(decks, door, discarded_mj, 0, 1);
                             for (;;)
                             {
@@ -832,9 +833,9 @@ int game() {
                                         decks[eatindex1].number = 0;
                                         decks[eatindex2].type = 0;
                                         decks[eatindex2].number = 0;
+                                        swap(&decks[eatindex1], &decks[normal_capacity - 1]);
+                                        swap(&decks[eatindex2], &decks[normal_capacity - 2]);
 
-                                        normal_capacity -= 3;
-                                        decks_quick_sort(decks, 0, normal_capacity - 1);
                                         break;
                                     }
                                     else
@@ -845,6 +846,9 @@ int game() {
                                 }
                             }
 
+                            normal_capacity -= 3;
+                            decks_quick_sort(decks, 0, normal_capacity - 1);
+                            
                             client_is_hu();
                             client_discard();
                             break;
