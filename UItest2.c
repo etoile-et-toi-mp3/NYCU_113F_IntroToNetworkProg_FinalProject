@@ -14,6 +14,18 @@ char wind_number[8][10]={"NULL","東", "南", "西", "北", "中", "發", "白"}
 char type[10][10]={"NULL","萬", "筒", "條", "風", "花"};
 
 void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index) {
+    //print the board card
+    if(on_board.type != 0 && on_board.number != 0) {
+        printf("other player played: \n");
+        printf("____\n");
+        if(on_board.type == 4) {
+            printf("|%s|\n", wind_number[on_board.number]);
+        } else printf("|%s|\n", number[on_board.number]);
+        if(on_board.type == 4 && on_board.number > 4) {
+            printf("|  |\n");
+        } else printf("|%s|\n", type[on_board.type]);
+        printf("‾‾‾‾\n");
+    }
     //print the index
     if(show_index) {
         for(int i = 0; i < 20; i++) {
