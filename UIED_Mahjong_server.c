@@ -947,29 +947,28 @@ int is_eat_possible(struct mj *deck, int nc) {
         count[(deck[j].type - 1) * 9 + deck[j].number - 1]++;
     }
 
-    if (count[discarded_mj.number] >= 1 &&
-        discarded_mj.number + 1 < 34 && count[discarded_mj.number + 1] >= 1 &&
-        discarded_mj.number + 2 < 34 && count[discarded_mj.number + 2] >= 1 &&
-        discarded_mj.number / 9 == (discarded_mj.number + 1) / 9 &&
-        discarded_mj.number / 9 == (discarded_mj.number + 2) / 9)
+    int target_index = (discarded_mj.type - 1) * 9 + discarded_mj.number - 1;
+
+    if (target_index + 1 < 34 && count[target_index + 1] >= 1 &&
+        target_index + 2 < 34 && count[target_index + 2] >= 1 &&
+        target_index / 9 == (target_index + 1) / 9 &&
+        target_index / 9 == (target_index + 2) / 9)
     {
         // this deck can eat!
         return 1;
     }
-    else if (count[discarded_mj.number] >= 1 &&
-             discarded_mj.number + 1 < 34 && count[discarded_mj.number + 1] >= 1 &&
-             discarded_mj.number - 1 < 34 && count[discarded_mj.number - 1] >= 1 &&
-             discarded_mj.number / 9 == (discarded_mj.number + 1) / 9 &&
-             discarded_mj.number / 9 == (discarded_mj.number - 1) / 9)
+    else if (target_index + 1 < 34 && count[target_index + 1] >= 1 &&
+             target_index - 1 >= 0 && count[target_index - 1] >= 1 &&
+             target_index / 9 == (target_index + 1) / 9 &&
+             target_index / 9 == (target_index - 1) / 9)
     {
         // this deck can eat!
         return 1;
     }
-    else if (count[discarded_mj.number] >= 1 &&
-             discarded_mj.number - 2 < 34 && count[discarded_mj.number - 2] >= 1 &&
-             discarded_mj.number - 1 < 34 && count[discarded_mj.number - 1] >= 1 &&
-             discarded_mj.number / 9 == (discarded_mj.number - 2) / 9 &&
-             discarded_mj.number / 9 == (discarded_mj.number - 1) / 9)
+    else if (target_index - 2 >= 0 && count[target_index - 2] >= 1 &&
+             target_index - 1 >= 0 && count[target_index - 1] >= 1 &&
+             target_index / 9 == (target_index - 2) / 9 &&
+             target_index / 9 == (target_index - 1) / 9)
     {
         // this deck can eat!
         return 1;
@@ -1023,7 +1022,6 @@ int othersreaction(int *playernowp) {
             }
             players[*playernowp]->normal_capacity -= 3;
 
-            write_message_wait_ack(players[*playernowp]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
@@ -1076,7 +1074,6 @@ int othersreaction(int *playernowp) {
             }
             players[*playernowp]->normal_capacity -= 3;
 
-            write_message_wait_ack(players[*playernowp]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
@@ -1129,7 +1126,6 @@ int othersreaction(int *playernowp) {
             }
             players[*playernowp]->normal_capacity -= 3;
 
-            write_message_wait_ack(players[*playernowp]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
@@ -1191,7 +1187,6 @@ int othersreaction(int *playernowp) {
 
             *playernowp = (*playernowp + 1) % 4;
 
-            write_message_wait_ack(players[*playernowp]->fd, "(Announce) player %d ate it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);
