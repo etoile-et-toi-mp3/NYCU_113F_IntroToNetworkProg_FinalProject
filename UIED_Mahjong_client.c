@@ -693,11 +693,11 @@ int game() {
                         {
                             if (recvline[32] == 'O')
                             {
-                                discarded_mj.type == TONG;
+                                discarded_mj.type = TONG;
                             }
                             else
                             {
-                                discarded_mj.type == TIAO;
+                                discarded_mj.type = TIAO;
                             }
                         }
                     }
