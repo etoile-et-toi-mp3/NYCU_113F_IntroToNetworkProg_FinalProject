@@ -267,7 +267,6 @@ void swap(struct mj *a, struct mj *b) {
     return;
 }
 
-// QUESTION!!
 //  堆牌山
 void priority_quick_sort(struct mj *mjs, int start, int end) {
     if (start >= end)
@@ -819,21 +818,7 @@ int is_hu(int playernow) {
     return 0;
 }
 
-int discard(int playernow) {
-    read_and_ack(players[playernow]->fd);
-    int index;
-    sscanf(recvline, "%d", &index);
-    discarded_mj.type = players[playernow]->decks[index].type;
-    discarded_mj.number = players[playernow]->decks[index].number;
-    memset(recvline, 0, strlen(recvline));
-    printf("player %d discarded index %d: %d, %d\n", playernow, index, discarded_mj.type, discarded_mj.number);
-
-    swap(&players[playernow]->decks[players[playernow]->normal_capacity], &players[playernow]->decks[index]);
-    players[playernow]->decks[players[playernow]->normal_capacity].type = 0;
-    players[playernow]->decks[players[playernow]->normal_capacity].number = 0;
-
-    decks_quick_sort(players[playernow]->decks, 0, players[playernow]->normal_capacity - 1);
-
+int broadcast_discard_mj(int playernow) {
     if (discarded_mj.type == TONG)
     {
         write_message_wait_ack(players[(playernow + 1) % 4]->fd, "(Discard) Player %d discarded %d TONG.\n", playernow, discarded_mj.number);
@@ -897,6 +882,24 @@ int discard(int playernow) {
             write_message_wait_ack(players[(playernow + 3) % 4]->fd, "(Discard) Player %d discarded BAI.\n", playernow);
         }
     }
+}
+
+int discard(int playernow) {
+    read_and_ack(players[playernow]->fd);
+    int index;
+    sscanf(recvline, "%d", &index);
+    discarded_mj.type = players[playernow]->decks[index].type;
+    discarded_mj.number = players[playernow]->decks[index].number;
+    memset(recvline, 0, strlen(recvline));
+    printf("player %d discarded index %d: %d, %d\n", playernow, index, discarded_mj.type, discarded_mj.number);
+
+    swap(&players[playernow]->decks[players[playernow]->normal_capacity], &players[playernow]->decks[index]);
+    players[playernow]->decks[players[playernow]->normal_capacity].type = 0;
+    players[playernow]->decks[players[playernow]->normal_capacity].number = 0;
+
+    decks_quick_sort(players[playernow]->decks, 0, players[playernow]->normal_capacity - 1);
+
+    broadcast_discard_mj(playernow);
 
     return 0;
 }
@@ -979,11 +982,71 @@ int is_eat_possible(struct mj *deck, int nc) {
     return 0;
 }
 
+int is_add_hu_possible(struct mj *deck, int nc) {
+    int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
+    memset(count, 0, 34 * sizeof(int));
+
+    for (int j = 0; j < nc; ++j)
+    {
+        // printf("(in pong) this is recording mj's index: %d, and it's: %d, %d\n", j, deck[j].type, deck[j].number);
+        count[(deck[j].type - 1) * 9 + deck[j].number - 1]++;
+    }
+
+    count[(discarded_mj.type - 1) * 9 + discarded_mj.number - 1]++;
+
+    for (int i = 0; i < 34; ++i)
+    {
+        if (count[i] >= 2)
+        {
+            count[i] -= 2;
+            if (hu_recursive_check(count, nc - 1) == 1)
+            {
+                // this deck can add_hu!
+                return 1;
+            }
+            count[i] += 2;
+        }
+    }
+    // cannot add_hu
+    return 0;
+}
+
 int othersreaction(int *playernowp) {
     // only mention the players when they
     // really can have some reaction to it.
     // otherwise put this discarded mj to the sea of its original player;
 
+    // Case 0: others may be able to hu
+    if (is_add_hu_possible(players[(*playernowp + 1) % 4]->decks, players[(*playernowp + 1) % 4]->normal_capacity) == 1)
+    {
+        write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Hu) You actually can hu already, proceed? [Y/n]\n");
+        read_and_ack(players[(*playernowp + 1) % 4]->fd);
+        if (strncmp(recvline, "YES!\n", 5) == 0)
+        {
+            winner = (*playernowp + 1) % 4;
+            return 1;
+        }
+    }
+    if (is_add_hu_possible(players[(*playernowp + 2) % 4]->decks, players[(*playernowp + 2) % 4]->normal_capacity) == 1)
+    {
+        write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Hu) You actually can hu already, proceed? [Y/n]\n");
+        read_and_ack(players[(*playernowp + 2) % 4]->fd);
+        if (strncmp(recvline, "YES!\n", 5) == 0)
+        {
+            winner = (*playernowp + 2) % 4;
+            return 1;
+        }
+    }
+    if (is_add_hu_possible(players[(*playernowp + 3) % 4]->decks, players[(*playernowp + 3) % 4]->normal_capacity) == 1)
+    {
+        write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Hu) You actually can hu already, proceed? [Y/n]\n");
+        read_and_ack(players[(*playernowp + 3) % 4]->fd);
+        if (strncmp(recvline, "YES!\n", 5) == 0)
+        {
+            winner = (*playernowp + 3) % 4;
+            return 1;
+        }
+    }
     // Case 1: others may be able to 碰
     if (is_pong_possible(players[(*playernowp + 1) % 4]->decks, players[(*playernowp + 1) % 4]->normal_capacity) == 1)
     {
@@ -1223,7 +1286,6 @@ int othersreaction(int *playernowp) {
     }
     // Case 3: no players can do anything
     write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
-
     players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
     discarded_mj.type = 0;
     discarded_mj.number = 0;

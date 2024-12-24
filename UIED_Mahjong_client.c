@@ -587,7 +587,7 @@ int game() {
                 }
                 else if (strncmp(recvline, "(Discard) ", 6) == 0)
                 {
-                    // someone discarded out something
+                    // some other player discarded out something
                     printf("%s", recvline);
 
                     // record the discarded mj
@@ -828,6 +828,35 @@ int game() {
                 {
                     // the game has set;
                     break;
+                }
+                else if (strncmp(recvline, "(Hu) ", 5) == 0)
+                {
+                    // you actually can hu
+                    memset(recvline, 0, strlen(recvline));
+                    char answer[64];
+                    for (;;)
+                    {
+                        printf("You actually can hu already, proceed? [Y/n]\n");
+                        read(STDIN_FILENO, answer, 64);
+                        if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
+                        {
+                            // want to pong;
+                            write_message_wait_ack(fd, "YES!\n");
+                            break;
+                        }
+                        else if (strncmp(answer, "n\n", 2) == 0)
+                        {
+                            // don't want to pong;
+                            write_message_wait_ack(fd, "NO!\n");
+                            break;
+                        }
+                        else
+                        {
+                            // unexpected chars received.
+                            // back into the loop until correct response is given.
+                            memset(answer, 0, strlen(answer));
+                        }
+                    }
                 }
                 else
                 {
