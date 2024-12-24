@@ -11,6 +11,7 @@
 */
 
 #include "unp.h"
+#include <stdarg.h>
 
 // the following variables are for connection purposes;
 int listenfd = -1;
@@ -49,9 +50,9 @@ const int DAZI = 4;   // it goes with 東南西北中發白;
 const int FLOWER = 5; // it goes with 春夏秋冬梅蘭竹菊;
 
 // the following variables are for cards;
-char number[10][10]={"NULL","一", "二", "三", "四", "五", "六", "七", "八", "九"};
-char wind_number[8][10]={"NULL","東", "南", "西", "北", "中", "發", "白"};
-char type[10][10]={"NULL","筒", "條", "萬", "風", "花"};
+char number[10][10] = {"NULL", "一", "二", "三", "四", "五", "六", "七", "八", "九"};
+char wind_number[8][10] = {"NULL", "東", "南", "西", "北", "中", "發", "白"};
+char type[10][10] = {"NULL", "筒", "條", "萬", "風", "花"};
 
 int winner = -1; // will be the index of the winner, or -1 before the game has set, or -2 if 流局。
 
@@ -91,6 +92,61 @@ struct player *player_init() {
     p->fd = -1;
     player_gameinfo_init(p);
     return p;
+}
+
+int write_message_wait_ack(int fd, const char *format, ...) {
+    // construct the content in sendline
+    va_list args;
+    va_start(args, format);
+    vsnprintf(sendline, MAXLINE, format, args);
+    va_end(args);
+
+    // write message to the client
+    write(fd, sendline, strlen(sendline));
+    printf("Sending: %s", sendline);
+    memset(sendline, 0, strlen(sendline));
+
+    // wait ACK from the client
+    int n = read(fd, recvline, MAXLINE);
+    if (n > 0)
+    {
+        if (strncmp(recvline, "ACK\n", 4) == 0)
+        {
+            printf("ACK Received\n");
+            memset(recvline, 0, strlen(recvline));
+            return 0;
+        }
+        else
+        {
+            fprintf(stdout, "Unexpected ACK message: %s\n", recvline);
+            exit(1);
+        }
+    }
+    else
+    {
+        perror("Failed to read ACK");
+        exit(1);
+    }
+    return 1;
+}
+
+int read_and_ack(int fd) { // no memset yet, do it yourself
+    int n = read(fd, recvline, MAXLINE);
+    if (n > 0)
+    {
+        printf("Received: %s\n", recvline);
+
+        // Send the ACK
+        write(fd, "ACK\n", 4);
+        printf("ACK sent.\n");
+        return 0;
+    }
+    else
+    {
+        perror("Failed to receive message");
+        exit(1);
+    }
+    return 1;
 }
 
 // initialize connection
@@ -447,48 +503,64 @@ int deal(int playernow) {
 
 // 印出手牌
 void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
-    //if last is played by other
-    if(hu==0 && last.type != 0) {
+    // if last is played by other
+    if (hu == 0 && last.type != 0)
+    {
         printf("other player played: \n");
         printf("___\n");
-        if(last.type == 4) {
+        if (last.type == 4)
+        {
             printf("|%s|\n", wind_number[last.number]);
-        } else printf("|%s|\n", number[last.number]);
-        if(last.type == 4 && last.number > 4) {
+        }
+        else
+            printf("|%s|\n", number[last.number]);
+        if (last.type == 4 && last.number > 4)
+        {
             printf("|  |\n");
-        } else printf("|%s|\n", type[last.type]);
+        }
+        else
+            printf("|%s|\n", type[last.type]);
         printf("‾‾‾\n");
     }
-    if(hu==1)printf("You are really good at this game! \nresult:\n");
-    else printf("Your hand: \n");
-    //print index
-    if(you_to_play){
+    if (hu == 1)
+        printf("You are really good at this game! \nresult:\n");
+    else
+        printf("Your hand: \n");
+    // print index
+    if (you_to_play)
+    {
         for (int i = 0; i < 20; ++i)
-        {  
-            if(hands[i].type == 0 && hands[i].number == 0) {
+        {
+            if (hands[i].type == 0 && hands[i].number == 0)
+            {
                 break;
             }
-            if(i>=10)printf(" %d", i);
-            else printf(" 0%d", i);
+            if (i >= 10)
+                printf(" %d", i);
+            else
+                printf(" 0%d", i);
         }
         printf("\n");
     }
-    
+
     for (int i = 0; i < 20; ++i)
     {
-        if(hands[i].type == 0 && hands[i].number == 0) {
+        if (hands[i].type == 0 && hands[i].number == 0)
+        {
             break;
         }
         printf("___");
     }
     printf("_\t");
-    if(hu && last.type != 0) {
+    if (hu && last.type != 0)
+    {
         printf("___");
     }
     printf("\t\t");
     for (int i = 0; i < 20; ++i)
     {
-        if(doors[i].type == 0 && doors[i].number == 0) {
+        if (doors[i].type == 0 && doors[i].number == 0)
+        {
             break;
         }
         printf("___");
@@ -499,72 +571,100 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
     printf("|");
     for (int i = 0; i < 20; ++i)
     {
-        if(hands[i].type == 0 && hands[i].number == 0) {
+        if (hands[i].type == 0 && hands[i].number == 0)
+        {
             break;
-        }if(hands[i].type == 4) {
+        }
+        if (hands[i].type == 4)
+        {
             printf("%s|", wind_number[hands[i].number]);
-        } else printf("%s|", number[hands[i].number]);
+        }
+        else
+            printf("%s|", number[hands[i].number]);
     }
     printf("\t");
-    if(hu && last.type != 0) {
-        if(last.type == 4) {
+    if (hu && last.type != 0)
+    {
+        if (last.type == 4)
+        {
             printf("|%s|", wind_number[last.number]);
-        } else printf("|%s|", number[last.number]);
+        }
+        else
+            printf("|%s|", number[last.number]);
     }
 
     printf("\t\t|");
     for (int i = 0; i < 20; ++i)
     {
-        if(doors[i].type == 0 && doors[i].number == 0) {
+        if (doors[i].type == 0 && doors[i].number == 0)
+        {
             break;
         }
-        if(doors[i].type == 4) {
+        if (doors[i].type == 4)
+        {
             printf("%s|", wind_number[doors[i].number]);
-        } else printf("%s|", number[doors[i].number]);
+        }
+        else
+            printf("%s|", number[doors[i].number]);
     }
-    //end of print the number
+    // end of print the number
     printf("\n");
     // print the type
     for (int i = 0; i < 20; ++i)
     {
-        if(hands[i].type == 0 && hands[i].number == 0) {
+        if (hands[i].type == 0 && hands[i].number == 0)
+        {
             break;
         }
-        if(hands[i].type == 4 && hands[i].number > 4) printf("|  ");
-        else printf("|%s", type[hands[i].type]);
+        if (hands[i].type == 4 && hands[i].number > 4)
+            printf("|  ");
+        else
+            printf("|%s", type[hands[i].type]);
     }
     printf("|\t");
-    if(hu && last.type != 0) {
-        if(last.type == 4 && last.number > 4) {
+    if (hu && last.type != 0)
+    {
+        if (last.type == 4 && last.number > 4)
+        {
             printf("|  ");
-        } else printf("|%s", type[last.type]);
-    }   
-    if(hu)printf("|");
+        }
+        else
+            printf("|%s", type[last.type]);
+    }
+    if (hu)
+        printf("|");
     printf("\t\t");
-    for(int i = 0; i < 20; i++) {
-        if(doors[i].type == 0 && doors[i].number == 0) {
+    for (int i = 0; i < 20; i++)
+    {
+        if (doors[i].type == 0 && doors[i].number == 0)
+        {
             break;
         }
-        if(doors[i].type == 4 && doors[i].number > 4) printf("|  ");
-        else printf("|%s", type[doors[i].type]);
+        if (doors[i].type == 4 && doors[i].number > 4)
+            printf("|  ");
+        else
+            printf("|%s", type[doors[i].type]);
     }
     printf("|\n");
-    //end of print the type
+    // end of print the type
     for (int i = 0; i < 20; ++i)
     {
-        if(hands[i].type == 0 && hands[i].number == 0) {
+        if (hands[i].type == 0 && hands[i].number == 0)
+        {
             break;
         }
         printf("‾‾‾");
     }
     printf("‾\t");
-    if(hu && last.type != 0) {
+    if (hu && last.type != 0)
+    {
         printf("‾‾‾");
     }
     printf("\t\t");
     for (int i = 0; i < 20; ++i)
     {
-        if(doors[i].type == 0 && doors[i].number == 0) {
+        if (doors[i].type == 0 && doors[i].number == 0)
+        {
             break;
         }
         printf("‾‾‾");
@@ -597,22 +697,14 @@ int mj_compare(struct mj a, struct mj b) {
 
 int draw(int playernow) {
     players[playernow]->decks[players[playernow]->normal_capacity] = shuffled_mjs[take_index++];
-    bzero(sendline, strlen(sendline));
-    sprintf(sendline, "%d %d\n", players[playernow]->decks[players[playernow]->normal_capacity].type, players[playernow]->decks[players[playernow]->normal_capacity].number);
-    printf("%s", sendline);
-    write(players[playernow]->fd, sendline, strlen(sendline));
-    printf("send playernow %d : %s\n", playernow, sendline);
-    memset(sendline, 0, strlen(sendline));
+    write_message_wait_ack(players[playernow]->fd, "%d %d\n", players[playernow]->decks[players[playernow]->normal_capacity].type, players[playernow]->decks[players[playernow]->normal_capacity].number);
 
     while (players[playernow]->decks[players[playernow]->normal_capacity].type == FLOWER)
     {
         players[playernow]->flowers[players[playernow]->flower_index++] = players[playernow]->decks[players[playernow]->normal_capacity];
         players[playernow]->decks[players[playernow]->normal_capacity] = shuffled_mjs[take_index++];
 
-        sprintf(sendline, "%d %d\n", players[playernow]->decks[players[playernow]->normal_capacity].type, players[playernow]->decks[players[playernow]->normal_capacity].number);
-        printf("%s", sendline);
-        write(players[playernow]->fd, sendline, strlen(sendline));
-        memset(sendline, 0, strlen(sendline));
+        write_message_wait_ack(players[playernow]->fd, "%d %d\n", players[playernow]->decks[players[playernow]->normal_capacity].type, players[playernow]->decks[players[playernow]->normal_capacity].number);
     }
     return 0;
 }
@@ -681,8 +773,7 @@ int hu_check(struct mj *decks, int nc) {
     int count[34] = {0}; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
     for (int j = 0; j < nc + 1; ++j)
     {
-        printf("this is what count is recording: index %d, %d\n", j, (carbon[j].type - 1) * 9 + carbon[j].number-1);
-        count[(carbon[j].type - 1) * 9 + carbon[j].number-1]++;
+        count[(carbon[j].type - 1) * 9 + carbon[j].number - 1]++;
     }
     for (int i = 0; i < 34; ++i)
     {
@@ -697,20 +788,14 @@ int hu_check(struct mj *decks, int nc) {
             count[i] += 2;
         }
     }
-    printf("this deck cannot hu!\n");
     return 0;
 }
 
 int is_hu(int playernow) {
     if (hu_check(players[playernow]->decks, players[playernow]->normal_capacity) == 1)
     {
-        sprintf(sendline, "can hu\n");
-        memset(recvline, 0, strlen(recvline));
-
-        write(players[playernow]->fd, sendline, strlen(sendline));
-        memset(sendline, 0, strlen(sendline));
-
-        read(players[playernow]->fd, recvline, MAXLINE);
+        write_message_wait_ack(players[playernow]->fd, "can hu\n");
+        read_and_ack(players[playernow]->fd);
         if (strncmp(recvline, "YES!\n", 5) == 0)
         {
             // we have a winner here!
@@ -726,88 +811,97 @@ int is_hu(int playernow) {
     }
     else
     {
-        sprintf(sendline, "cannot hu\n");
-        memset(recvline, 0, strlen(recvline));
-
-        printf("send playernow %d cannot hu\n", playernow);
-        write(players[playernow]->fd, sendline, strlen(sendline));
-        memset(sendline, 0, strlen(sendline));
+        // cannot hu, just continue the game;
     }
     return 0;
 }
 
 int discard(int playernow) {
-    read(players[playernow]->fd, recvline, MAXLINE);
+    read_and_ack(players[playernow]->fd);
     int index;
     sscanf(recvline, "%d", &index);
-    printf("player %d discarded %d\n", playernow, index);
+    printf("player %d discarded index %d: %d, %d\n", playernow, index, discarded_mj.type, discarded_mj.number);
     memset(read, 0, strlen(recvline));
 
-    discarded_mj.type = players[playernow]->decks[index].type;//DEBUG!!
+    discarded_mj.type = players[playernow]->decks[index].type;
     discarded_mj.number = players[playernow]->decks[index].number;
+
     swap(&players[playernow]->decks[players[playernow]->normal_capacity], &players[playernow]->decks[index]);
     players[playernow]->decks[players[playernow]->normal_capacity].type = 0;
     players[playernow]->decks[players[playernow]->normal_capacity].number = 0;
+    
     decks_quick_sort(players[playernow]->decks, 0, players[playernow]->normal_capacity);
-    //printf("player %d discarded %d %d\n", playernow, discarded_mj.type, discarded_mj.number);
+
     if (discarded_mj.type == TONG)
     {
-        sprintf(sendline, "player %d discarded %d TONG.\n", playernow, discarded_mj.number);
+        write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded %d TONG.\n", playernow, discarded_mj.number);
+        write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded %d TONG.\n", playernow, discarded_mj.number);
+        write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded %d TONG.\n", playernow, discarded_mj.number);
     }
     else if (discarded_mj.type == TIAO)
     {
-        sprintf(sendline, "player %d discarded %d TIAO.\n", playernow, discarded_mj.number);
+        write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded %d TIAO.\n", playernow, discarded_mj.number);
+        write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded %d TIAO.\n", playernow, discarded_mj.number);
+        write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded %d TIAO.\n", playernow, discarded_mj.number);
     }
     else if (discarded_mj.type == WAN)
     {
-        sprintf(sendline, "player %d discarded %d WAN.\n", playernow, discarded_mj.number);
+        write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded %d WAN.\n", playernow, discarded_mj.number);
+        write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded %d WAN.\n", playernow, discarded_mj.number);
+        write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded %d WAN.\n", playernow, discarded_mj.number);
     }
     else if (discarded_mj.type == DAZI)
     {
         if (discarded_mj.number == 1)
         {
-            sprintf(sendline, "player %d discarded EAST.\n", playernow);
+            write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded EAST.\n", playernow);
+            write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded EAST.\n", playernow);
+            write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded EAST.\n", playernow);
         }
         else if (discarded_mj.number == 2)
         {
-            sprintf(sendline, "player %d discarded SOUTH.\n", playernow);
+            write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded SOUTH.\n", playernow);
+            write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded SOUTH.\n", playernow);
+            write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded SOUTH.\n", playernow);
         }
         else if (discarded_mj.number == 3)
         {
-            sprintf(sendline, "player %d discarded WEST.\n", playernow);
+            write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded WEST.\n", playernow);
+            write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded WEST.\n", playernow);
+            write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded WEST.\n", playernow);
         }
         else if (discarded_mj.number == 4)
         {
-            sprintf(sendline, "player %d discarded NORTH.\n", playernow);
+            write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded NORTH.\n", playernow);
+            write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded NORTH.\n", playernow);
+            write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded NORTH.\n", playernow);
         }
         else if (discarded_mj.number == 5)
         {
-            sprintf(sendline, "player %d discarded ZHONG.\n", playernow);
+            write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded ZHONG.\n", playernow);
+            write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded ZHONG.\n", playernow);
+            write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded ZHONG.\n", playernow);
         }
         else if (discarded_mj.number == 6)
         {
-            sprintf(sendline, "player %d discarded FA.\n", playernow);
+            write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded FA.\n", playernow);
+            write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded FA.\n", playernow);
+            write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded FA.\n", playernow);
         }
         else if (discarded_mj.number == 7)
         {
-            sprintf(sendline, "player %d discarded BAI.\n", playernow);
+            write_message_wait_ack(players[(playernow + 1)% 4], "player %d discarded BAI.\n", playernow);
+            write_message_wait_ack(players[(playernow + 2)% 4], "player %d discarded BAI.\n", playernow);
+            write_message_wait_ack(players[(playernow + 3)% 4], "player %d discarded BAI.\n", playernow);
         }
     }
 
-    write(players[(playernow + 1) % 4]->fd, sendline, strlen(sendline));
-    write(players[(playernow + 2) % 4]->fd, sendline, strlen(sendline));
-    write(players[(playernow + 3) % 4]->fd, sendline, strlen(sendline));
-    memset(sendline, 0, strlen(sendline));
     return 0;
 }
 
 int draw_n_discard(int playernow) {
-    memset(sendline, 0, strlen(sendline));
-    sprintf(sendline, "your turn\n");
-    printf("%s", sendline);
-    write(players[playernow]->fd, sendline, strlen(sendline));
-    memset(sendline, 0, strlen(sendline));
-    sleep(1);
+    write_message_wait_ack(players[playernow]->fd, "your turn\n");
+    // sleep(1);
 
     draw(playernow);
     if (is_hu(playernow) == 1)
@@ -816,7 +910,7 @@ int draw_n_discard(int playernow) {
     }
     printf("player %d no hu\n", playernow);
     print_deck(players[playernow]->decks, players[playernow]->door, discarded_mj, 0, 1);
-    discard(playernow);//BUG!!
+    discard(playernow); // BUG!!
     print_deck(players[playernow]->decks, players[playernow]->door, discarded_mj, 0, 0);
     return 0;
 }
