@@ -1,6 +1,6 @@
 include ./my.defines
 
-PROGS =	Mahjong_server Mahjong_client UIED_Mahjong_client UIED_Mahjong_server
+PROGS =	UIED_Mahjong_client UIED_Mahjong_server
 
 all:	${PROGS}
 

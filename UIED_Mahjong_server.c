@@ -745,9 +745,10 @@ int discard(int playernow) {
 
     discarded_mj.type = players[playernow]->decks[index].type;//DEBUG!!
     discarded_mj.number = players[playernow]->decks[index].number;
-    players[playernow]->decks[index].type = 0;
-    players[playernow]->decks[index].number = 0;
-    decks_quick_sort(players[playernow]->decks, 0, 15);
+    swap(&players[playernow]->decks[players[playernow]->normal_capacity], &players[playernow]->decks[index]);
+    players[playernow]->decks[players[playernow]->normal_capacity].type = 0;
+    players[playernow]->decks[players[playernow]->normal_capacity].number = 0;
+    decks_quick_sort(players[playernow]->decks, 0, players[playernow]->normal_capacity);
     //printf("player %d discarded %d %d\n", playernow, discarded_mj.type, discarded_mj.number);
     if (discarded_mj.type == TONG)
     {
