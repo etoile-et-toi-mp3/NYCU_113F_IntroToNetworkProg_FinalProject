@@ -201,7 +201,7 @@ int connection_establish() {
                     }
                     else
                     {
-                        perror("accept");
+                        perror("accept error\n");
                         exit(1);
                     }
                 }
@@ -525,7 +525,7 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
     if (hu == 1)
         printf("You are really good at this game! \nresult:\n");
     else
-        printf("Your hand: \n");
+        printf("Your decks: \n");
     // print index
     if (you_to_play)
     {
@@ -774,7 +774,6 @@ int hu_check(struct mj *decks, int nc) {
     int count[34] = {0}; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
     for (int j = 0; j < nc + 1; ++j)
     {
-        printf("%d: %d\n", j, (carbon[j].type - 1) * 9 + carbon[j].number - 1);
         count[(carbon[j].type - 1) * 9 + carbon[j].number - 1]++;
     }
     for (int i = 0; i < 34; ++i)
@@ -909,9 +908,8 @@ int draw_n_discard(int playernow) {
     {
         return 1;
     }
-    printf("player %d no hu\n", playernow);
     print_deck(players[playernow]->decks, players[playernow]->door, discarded_mj, 0, 1);
-    discard(playernow); // BUG!!
+    discard(playernow);
     print_deck(players[playernow]->decks, players[playernow]->door, discarded_mj, 0, 0);
     return 0;
 }
@@ -922,7 +920,7 @@ int is_pong_possible(struct mj *deck, int nc) {
 
     for (int j = 0; j < nc; ++j)
     {
-        printf("(in pong) this is recording mj's index: %d, and it's: %d, %d\n", j, deck[j].type, deck[j].number);
+        // printf("(in pong) this is recording mj's index: %d, and it's: %d, %d\n", j, deck[j].type, deck[j].number);
         count[(deck[j].type - 1) * 9 + deck[j].number - 1]++;
     }
 
@@ -945,7 +943,7 @@ int is_eat_possible(struct mj *deck, int nc) {
     memset(count, 0, 34 * sizeof(int));
     for (int j = 0; j < nc; ++j)
     {
-        printf("(in eat) this is recording mj's index: %d, and it's: %d, %d\n", j, deck[j].type, deck[j].number);
+        // printf("(in eat) this is recording mj's index: %d, and it's: %d, %d\n", j, deck[j].type, deck[j].number);
         count[(deck[j].type - 1) * 9 + deck[j].number - 1]++;
     }
 
@@ -992,8 +990,6 @@ int othersreaction(int *playernowp) {
         {
             *playernowp = (*playernowp + 1) % 4;
             players[*playernowp]->door[players[*playernowp]->door_index++] = discarded_mj;
-            discarded_mj.number = 0;
-            discarded_mj.type = 0;
             int need = 2;
             for (int i = 0; i < players[*playernowp]->normal_capacity; ++i)
             {
@@ -1023,12 +1019,14 @@ int othersreaction(int *playernowp) {
                 }
             }
             players[*playernowp]->normal_capacity -= 3;
-
-            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity - 1);
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity);
 
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
+
+            discarded_mj.number = 0;
+            discarded_mj.type = 0;
 
             is_hu(*playernowp);
             discard(*playernowp);
@@ -1036,7 +1034,11 @@ int othersreaction(int *playernowp) {
         }
         else
         {
-            // the player don't want to pong
+            write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
+
+            players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
+            discarded_mj.type = 0;
+            discarded_mj.number = 0;
         }
         memset(recvline, 0, strlen(recvline));
     }
@@ -1078,11 +1080,14 @@ int othersreaction(int *playernowp) {
             }
             players[*playernowp]->normal_capacity -= 3;
 
-            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity - 1);
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity);
 
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
+
+            discarded_mj.number = 0;
+            discarded_mj.type = 0;
 
             is_hu(*playernowp);
             discard(*playernowp);
@@ -1090,7 +1095,11 @@ int othersreaction(int *playernowp) {
         }
         else
         {
-            // the player don't want to pong
+            write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
+
+            players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
+            discarded_mj.type = 0;
+            discarded_mj.number = 0;
         }
         memset(recvline, 0, strlen(recvline));
     }
@@ -1132,11 +1141,14 @@ int othersreaction(int *playernowp) {
             }
             players[*playernowp]->normal_capacity -= 3;
 
-            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity - 1);
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity);
 
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
+
+            discarded_mj.number = 0;
+            discarded_mj.type = 0;
 
             is_hu(*playernowp);
             discard(*playernowp);
@@ -1144,7 +1156,11 @@ int othersreaction(int *playernowp) {
         }
         else
         {
-            // the player don't want to pong
+            write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
+
+            players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
+            discarded_mj.type = 0;
+            discarded_mj.number = 0;
         }
         memset(recvline, 0, strlen(recvline));
     }
@@ -1162,7 +1178,6 @@ int othersreaction(int *playernowp) {
                 read_and_ack(players[(*playernowp + 1) % 4]->fd);
                 int eatindex1 = -1, eatindex2 = -1;
                 sscanf(recvline, "%d %d", &eatindex1, &eatindex2);
-                printf("These are indexes: %d, %d\n", eatindex1, eatindex2);
                 memset(recvline, 0, strlen(recvline));
                 struct mj eat_temp[3];
                 eat_temp[0] = players[(*playernowp + 1) % 4]->decks[eatindex1];
@@ -1196,22 +1211,26 @@ int othersreaction(int *playernowp) {
 
             *playernowp = (*playernowp + 1) % 4;
             players[*playernowp]->normal_capacity -= 3;
-            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity - 1);
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity);
 
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);
 
-            printf("IN is_hu\n");
+            discarded_mj.number = 0;
+            discarded_mj.type = 0;
+
             is_hu(*playernowp);
-            printf("In discard\n");
             discard(*playernowp);
-            printf("In othersreaction\n");
             othersreaction(playernowp);
         }
         else
         {
-            // the player don't want to eat
+            write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
+
+            players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
+            discarded_mj.type = 0;
+            discarded_mj.number = 0;
         }
         memset(recvline, 0, strlen(recvline));
     }
