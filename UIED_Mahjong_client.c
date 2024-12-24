@@ -643,7 +643,7 @@ int game() {
                     client_discard();
                     continue;
                 }
-                else if (strncmp(recvline, "player", 6) == 0)
+                else if (strncmp(recvline, "(Discard) ", 6) == 0)
                 {
                     // someone discarded out something
                     printf("%s", recvline);
