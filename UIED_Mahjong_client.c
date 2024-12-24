@@ -442,7 +442,7 @@ int client_is_hu() {
         for (;;)
         {
             printf("You already suffice the conditions to win, proceed? [Y/n]\n");
-            scanf("%s", answer);
+            read(fileno(stdin), answer, 64);
             if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
             {
                 // want to hu;
@@ -463,7 +463,7 @@ int client_is_hu() {
             }
         }
     }
-    else if(strncmp(recvline, "cannot hu\n", 7) == 0)
+    else if (strncmp(recvline, "cannot hu\n", 7) == 0)
     {
         // do nothing;
     }
@@ -567,7 +567,7 @@ int get_result() {
     char answer[64];
     for (;;)
     {
-        scanf("%s", answer);
+        read(fileno(stdin), answer, 64);
         if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
         {
             // want to pong;
@@ -718,14 +718,15 @@ int game() {
                     for (;;)
                     {
                         printf("You can pong, proceed? [Y/n]\n");
-                        scanf("%s", answer);
+                        read(fileno(stdin), answer, 64);
                         if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
                         {
                             // want to pong;
-                            sprintf(sendline, "YES!\n");
-                            write(fd, sendline, strlen(sendline));
-                            memset(sendline, 0, strlen(sendline));
+                            write_message_wait_ack(fd, "YES!\n");
+
                             door[door_index++] = discarded_mj;
+                            discarded_mj.number = 0;
+                            discarded_mj.type = 0;
                             int need = 2;
                             for (int i = 0; i < normal_capacity; ++i)
                             {
@@ -755,6 +756,7 @@ int game() {
                                 }
                             }
                             normal_capacity -= 3;
+                            print_deck(decks, door, EMPTY_MJ, 0, 1);
 
                             client_is_hu();
                             client_discard();
@@ -763,9 +765,7 @@ int game() {
                         else if (strncmp(answer, "n\n", 2) == 0)
                         {
                             // don't want to pong;
-                            sprintf(sendline, "NO!\n");
-                            write(fd, sendline, strlen(sendline));
-                            memset(sendline, 0, strlen(sendline));
+                            write_message_wait_ack(fd, "NO!\n");
                             break;
                         }
                         else
@@ -785,36 +785,32 @@ int game() {
                     for (;;)
                     {
                         printf("You can eat, proceed? [Y/n]\n");
-                        scanf("%s", answer);
+                        read(fileno(stdin), answer, 64);
                         if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
                         {
                             memset(answer, 0, strlen(answer));
 
                             // want to eat;
-                            sprintf(sendline, "YES!\n");
-                            write(fd, sendline, strlen(sendline));
-                            memset(sendline, 0, strlen(sendline));
+                            write_message_wait_ack(fd, "YES!\n");
 
                             int eatindex1, eatindex2;
 
                             for (;;)
                             {
-                                read(fd, recvline, MAXLINE);
+                                read_and_ack(fd);
                                 if (strncmp(recvline, "Type which 2 of the mjs you want to eat with: \n", 47) == 0)
                                 {
                                     printf("%s", recvline);
                                     memset(recvline, 0, strlen(recvline));
 
-                                    scanf("%s", answer);
+                                    read(fileno(stdin), answer, 64);
                                     sscanf(answer, "%d %d", &eatindex1, &eatindex2);
-                                    write(fd, answer, strlen(answer));
-                                    memset(answer, 0, strlen(answer));
+                                    write_message_wait_ack(fd, "%d %d\n", eatindex1, eatindex2);
 
-                                    read(fd, recvline, MAXLINE);
+                                    read_and_ack(fd);
                                     if (strncmp(recvline, "eatable.\n", 10) == 0)
                                     {
                                         // good eat;
-                                        memset(recvline, 0, strlen(recvline));
                                         struct mj eat_temp[3];
                                         eat_temp[0] = decks[eatindex1];
                                         eat_temp[1] = decks[eatindex2];
@@ -835,8 +831,8 @@ int game() {
                                     else
                                     {
                                         printf("%s", recvline);
-                                        memset(recvline, 0, strlen(recvline));
                                     }
+                                    memset(recvline, 0, strlen(recvline));
                                 }
                             }
 
@@ -862,12 +858,16 @@ int game() {
                 }
                 else if (strncmp(recvline, "no one wants it.\n", 17) == 0)
                 {
+                    memset(recvline, 0, strlen(recvline));
+
                     sea[sea_index++] = discarded_mj;
                     discarded_mj.type = 0;
                     discarded_mj.number = 0;
                 }
                 else if (strncmp(recvline, "(Game) ", 7) == 0)
                 {
+                    memset(recvline, 0, strlen(recvline));
+
                     break;
                 }
                 else
