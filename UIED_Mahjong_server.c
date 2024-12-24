@@ -1022,6 +1022,8 @@ int othersreaction(int *playernowp) {
             }
             players[*playernowp]->normal_capacity -= 3;
 
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity-1);
+
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
@@ -1073,6 +1075,8 @@ int othersreaction(int *playernowp) {
                 }
             }
             players[*playernowp]->normal_capacity -= 3;
+
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity-1);
 
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
@@ -1126,6 +1130,8 @@ int othersreaction(int *playernowp) {
             }
             players[*playernowp]->normal_capacity -= 3;
 
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity-1);
+
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ponged it\n", *playernowp);
@@ -1155,6 +1161,7 @@ int othersreaction(int *playernowp) {
 
                 int eatindex1, eatindex2;
                 sscanf(recvline, "%d %d", &eatindex1, &eatindex2);
+                memset(recvline, 0, strlen(recvline));
                 struct mj eat_temp[3];
                 eat_temp[0] = players[(*playernowp + 1) % 4]->decks[eatindex1];
                 eat_temp[1] = players[(*playernowp + 1) % 4]->decks[eatindex2];
@@ -1186,6 +1193,8 @@ int othersreaction(int *playernowp) {
             }
 
             *playernowp = (*playernowp + 1) % 4;
+
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity-1);
 
             write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);
             write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ate it\n", *playernowp);

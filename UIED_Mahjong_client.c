@@ -734,7 +734,7 @@ int game() {
                                 printf("this is cmp value: %d\n", mj_compare(discarded_mj, decks[i]));
                                 printf("this is discarded: %d, %d\n", discarded_mj.type, discarded_mj.number);
                                 printf("this is decks[%d]: %d, %d\n", i, decks[i].type, decks[i].number);
-                                
+
                                 if (mj_compare(discarded_mj, decks[i]) == 0)
                                 {
                                     printf("erased a mj: %d", i);
@@ -803,7 +803,7 @@ int game() {
                             write_message_wait_ack(fd, "YES!\n");
 
                             int eatindex1, eatindex2;
-
+                            print_deck(decks, door, discarded_mj, 0, 1);
                             for (;;)
                             {
                                 read_and_ack(fd);
@@ -814,7 +814,7 @@ int game() {
 
                                     read(fileno(stdin), answer, 64);
                                     sscanf(answer, "%d %d", &eatindex1, &eatindex2);
-                                    write_message_wait_ack(fd, "%d %d\n", eatindex1, eatindex2);
+                                    write_message_wait_ack(fd, answer);
 
                                     read_and_ack(fd);
                                     if (strncmp(recvline, "eatable.\n", 10) == 0)
