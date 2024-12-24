@@ -811,7 +811,7 @@ int is_hu(int playernow) {
     }
     else
     {
-        // cannot hu, just continue the game;
+        write_message_wait_ack(players[playernow]->fd, "cannot hu\n");
     }
     return 0;
 }

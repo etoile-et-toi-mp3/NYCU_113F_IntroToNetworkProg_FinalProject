@@ -163,6 +163,7 @@ int get_decks() {
         read(fd, recvline, MAXLINE);
         if (strncmp(recvline, "transfer complete\n", 18) == 0)
         {
+            memset(recvline, 0, strlen(recvline));
             break;
         }
         sscanf(recvline, "%d", &n);
@@ -462,9 +463,9 @@ int client_is_hu() {
             }
         }
     }
-    else
+    else if(strncmp(recvline, "cannot hu\n", 7) == 0)
     {
-        // cannot hu, just continue the game;
+        // do nothing;
     }
     memset(recvline, 0, strlen(recvline));
     return 0;
