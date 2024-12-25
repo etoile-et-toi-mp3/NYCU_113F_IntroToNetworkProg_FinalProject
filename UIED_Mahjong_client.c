@@ -19,7 +19,7 @@ const int FLOWER = 5; // it goes with 春夏秋冬梅蘭竹菊;
 int fd;
 struct sockaddr_in serverinfo;
 socklen_t serverlen;
-char sendline[MAXLINE] = {0}, recvline[MAXLINE] = {0};
+char sendline[MAXLINE] = {0}, recvline[MAXLINE] = {0}, message[MAXLINE] = {0};
 fd_set rset, testset;
 int maxfd = 0, id_num;
 
@@ -163,6 +163,7 @@ int get_decks() {
     for (int i = 0; i < 16; ++i)
     {
         read_and_ack(fd);
+        printf("got mj, i = %d.\n", i);
         sscanf(recvline, "%d %d", &t, &n);
         decks[i].type = t;
         decks[i].number = n;
@@ -251,6 +252,12 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
             printf("|%s|\n", type[on_board.type]);
         printf("‾‾‾‾\n");
     }
+
+    printf("%s", message);
+
+    // print some msg
+    printf("Your decks: \n");
+
     // print the index
     if (show_index)
     {
@@ -268,9 +275,6 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         printf("\n");
     }
 
-    //print some msg
-    printf("Your decks: \n");
-    
     // print the cap
     printf("_");
     for (int i = 0; i < 20; i++)
@@ -282,7 +286,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         printf("___");
     }
     printf("\t\t");
-    if(doors[0].type != 0 && doors[0].number != 0) printf("_");
+    if (doors[0].type != 0 && doors[0].number != 0)
+        printf("_");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -309,7 +314,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
             printf("%s|", number[hands[i].number]);
     }
     printf("\t\t");
-    if(doors[0].type != 0 && doors[0].number != 0) printf("|");
+    if (doors[0].type != 0 && doors[0].number != 0)
+        printf("|");
     for (int i = 0; i < 20; ++i)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -339,7 +345,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
             printf("%s|", type[hands[i].type]);
     }
     printf("\t\t");
-    if(doors[0].type != 0 && doors[0].number != 0) printf("|");
+    if (doors[0].type != 0 && doors[0].number != 0)
+        printf("|");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -364,7 +371,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         printf("‾‾‾");
     }
     printf("\t\t");
-    if(doors[0].type != 0 && doors[0].number != 0) printf("‾");
+    if (doors[0].type != 0 && doors[0].number != 0)
+        printf("‾");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -489,45 +497,55 @@ int client_discard() {
 
     if (decks[index].type == TONG)
     {
-        printf("You chose to discard %d TONG.\n", decks[index].number);
+        memset(message, 0, strlen(message));
+        sprintf(message, "You chose to discard %d TONG.\n", decks[index].number);
     }
     else if (decks[index].type == TIAO)
     {
-        printf("You chose to discard %d TIAO.\n", decks[index].number);
+        memset(message, 0, strlen(message));
+        sprintf(message, "You chose to discard %d TIAO.\n", decks[index].number);
     }
     else if (decks[index].type == WAN)
     {
-        printf("You chose to discard %d WAN.\n", decks[index].number);
+        memset(message, 0, strlen(message));
+        sprintf(message, "You chose to discard %d WAN.\n", decks[index].number);
     }
     else if (decks[index].type == DAZI)
     {
         if (decks[index].number == 1)
         {
-            printf("You chose to discard EAST.\n");
+            memset(message, 0, strlen(message));
+            sprintf(message, "You chose to discard EAST.\n");
         }
         else if (decks[index].number == 2)
         {
-            printf("You chose to discard SOUTH.\n");
+            memset(message, 0, strlen(message));
+            sprintf(message, "You chose to discard SOUTH.\n");
         }
         else if (decks[index].number == 3)
         {
-            printf("You chose to discard WEST.\n");
+            memset(message, 0, strlen(message));
+            sprintf(message, "You chose to discard WEST.\n");
         }
         else if (decks[index].number == 4)
         {
-            printf("You chose to discard NORTH.\n");
+            memset(message, 0, strlen(message));
+            sprintf(message, "You chose to discard NORTH.\n");
         }
         else if (decks[index].number == 5)
         {
-            printf("You chose to discard ZHONG.\n");
+            memset(message, 0, strlen(message));
+            sprintf(message, "You chose to discard ZHONG.\n");
         }
         else if (decks[index].number == 6)
         {
-            printf("You chose to discard FA.\n");
+            memset(message, 0, strlen(message));
+            sprintf(message, "You chose to discard FA.\n");
         }
         else if (decks[index].number == 7)
         {
-            printf("You chose to discard BAI.\n");
+            memset(message, 0, strlen(message));
+            sprintf(message, "You chose to discard BAI.\n");
         }
     }
 
@@ -736,7 +754,7 @@ int game() {
             {
                 if (strncmp(recvline, "your turn\n", 10) == 0)
                 {
-                    printf("----------It's your turn!----------\n");
+                    sprintf(message, "%sIt's your turn!\n", message);
                     memset(recvline, 0, strlen(recvline));
                     // yeah it's your turn;
                     client_draw();
@@ -760,7 +778,10 @@ int game() {
                 else if (strncmp(recvline, "(Discard) ", 6) == 0)
                 {
                     // some other player discarded out something
-                    printf("%s", recvline);
+
+                    memset(message, 0, strlen(message));
+
+                    strncpy(message, recvline, strlen(recvline));
 
                     // record the discarded mj
                     if ('A' <= recvline[29] && recvline[29] <= 'Z')
@@ -820,7 +841,9 @@ int game() {
                 else if (strncmp(recvline, "(Announce) ", 11) == 0)
                 {
                     // this is an announcement, just print it onto stdout;
-                    printf("%s", recvline);
+
+                    memset(message, 0, strlen(message));
+                    strncpy(message, recvline, strlen(recvline));
                     memset(recvline, 0, strlen(recvline));
                 }
                 else if (strncmp(recvline, "You can pong.\n", 15) == 0)
@@ -1147,6 +1170,7 @@ int game() {
                 }
                 else if (strncmp(recvline, "(End) ", 6) == 0)
                 {
+                    // the game has been flushed
                     break;
                 }
                 else
