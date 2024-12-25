@@ -713,10 +713,19 @@ int client_game_set() {
 int receive_id() {
     read_and_ack(fd);
     id_num = (int)recvline[0] - '0';
-    system("clear");
-    printf("This is your id: %d\n", id_num);
     memset(recvline, 0, strlen(recvline));
-    sleep(4);
+    int t = 3;
+    while (t--)
+    {
+        system("clear");
+        printf("This is your id: %d", id_num);
+        for(int i=t ; i<3 ; ++i)
+        {
+            printf(".");
+        }
+        printf("\n");
+        sleep(1);
+    }
     return 0;
 }
 
