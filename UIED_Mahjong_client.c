@@ -157,19 +157,15 @@ int get_decks() {
     int t, n;
     for (int i = 0; i < 16; ++i)
     {
-        read(fd, recvline, MAXLINE);
+        read_and_ack(fd);
         sscanf(recvline, "%d %d", &t, &n);
         decks[i].type = t;
         decks[i].number = n;
         memset(recvline, 0, strlen(recvline));
-
-        sprintf(sendline, "ACK\n");
-        write(fd, sendline, strlen(sendline));
-        memset(sendline, 0, strlen(sendline));
     }
     for (;;)
     {
-        read(fd, recvline, MAXLINE);
+        read_and_ack(fd);
         if (strncmp(recvline, "transfer complete\n", 18) == 0)
         {
             memset(recvline, 0, strlen(recvline));
@@ -179,10 +175,6 @@ int get_decks() {
         flowers[flower_index].type = FLOWER;
         flowers[flower_index++].number = n;
         memset(recvline, 0, strlen(recvline));
-
-        sprintf(sendline, "ACK\n");
-        write(fd, sendline, strlen(sendline));
-        memset(sendline, 0, strlen(sendline));
     }
     return 0;
 }
@@ -415,7 +407,12 @@ int client_is_hu() {
         for (;;)
         {
             printf("You already suffice the conditions to win, proceed? [Y/n]\n");
-            read(STDIN_FILENO, answer, 64);
+            if (read(STDIN_FILENO, answer, 64) == 0)
+            {
+                printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                close(fd);
+                exit(1);
+            }
             if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
             {
                 // want to hu;
@@ -450,12 +447,20 @@ int client_is_hu() {
 }
 
 int client_discard() {
-    print_deck(decks, door, EMPTY_MJ, 1, 1);
+    print_deck(decks, door, discarded_mj, 1, 1);
+#ifdef DEBUG
+    printf("pd in 450.\n");
+#endif
     int index = -1;
     for (;;)
     {
         printf("Choose a mj and discard it...!\n");
-        scanf("%d", &index);
+        if (scanf("%d", &index) == EOF)
+        {
+            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+            close(fd);
+            exit(1);
+        }
         if (0 <= index && index < normal_capacity + 1)
         {
             break;
@@ -467,7 +472,8 @@ int client_discard() {
         }
     }
 
-    discarded_mj = decks[index];
+    discarded_mj.type = decks[index].type;
+    discarded_mj.number = decks[index].number;
 
     if (decks[index].type == TONG)
     {
@@ -549,7 +555,12 @@ int client_game_set() {
     char answer[64];
     for (;;)
     {
-        read(STDIN_FILENO, answer, 64);
+        if (read(STDIN_FILENO, answer, 64) == 0)
+        {
+            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+            close(fd);
+            exit(1);
+        }
         if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
         {
             // want to play new game;
@@ -621,8 +632,10 @@ int game() {
 
         for (;;)
         {
-            // system("clear");
             print_deck(decks, door, discarded_mj, 0, 0);
+#ifdef DEBUG
+            printf("pd in 635.\n");
+#endif
 
             if (read_and_ack(fd) != 0)
             {
@@ -638,6 +651,9 @@ int game() {
                     // yeah it's your turn;
                     client_draw();
                     print_deck(decks, door, discarded_mj, 1, 1);
+#ifdef DEBUG
+                    printf("pd in 653.\n");
+#endif
                     if (client_is_hu() == 1)
                     {
                         // really won
@@ -725,7 +741,12 @@ int game() {
                     for (;;)
                     {
                         printf("You can pong, proceed? [Y/n]\n");
-                        read(STDIN_FILENO, answer, 64);
+                        if (read(STDIN_FILENO, answer, 64) == 0)
+                        {
+                            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                            close(fd);
+                            exit(1);
+                        }
                         if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
                         {
                             // want to pong;
@@ -806,7 +827,12 @@ int game() {
                     for (;;)
                     {
                         printf("You can eat, proceed? [Y/n]\n");
-                        read(STDIN_FILENO, answer, 64);
+                        if (read(STDIN_FILENO, answer, 64) == 0)
+                        {
+                            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                            close(fd);
+                            exit(1);
+                        }
                         if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
                         {
                             memset(answer, 0, strlen(answer));
@@ -816,6 +842,9 @@ int game() {
 
                             int eatindex1 = -1, eatindex2 = -1;
                             print_deck(decks, door, discarded_mj, 0, 1);
+#ifdef DEBUG
+                            printf("pd in 844.\n");
+#endif
                             for (;;)
                             {
                                 read_and_ack(fd);
@@ -824,7 +853,12 @@ int game() {
                                     printf("%s", recvline);
                                     memset(recvline, 0, strlen(recvline));
 
-                                    read(STDIN_FILENO, answer, 64);
+                                    if (read(STDIN_FILENO, answer, 64) == 0)
+                                    {
+                                        printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                                        close(fd);
+                                        exit(1);
+                                    }
                                     sscanf(answer, "%d %d", &eatindex1, &eatindex2);
                                     write_message_wait_ack(fd, answer);
 
@@ -892,8 +926,6 @@ int game() {
                     memset(recvline, 0, strlen(recvline));
 
                     sea[sea_index++] = discarded_mj;
-                    discarded_mj.type = 0;
-                    discarded_mj.number = 0;
                 }
                 else if (strncmp(recvline, "(Game) ", 7) == 0)
                 {
@@ -908,7 +940,12 @@ int game() {
                     for (;;)
                     {
                         printf("You actually can hu already, proceed? [Y/n]\n");
-                        read(STDIN_FILENO, answer, 64);
+                        if (read(STDIN_FILENO, answer, 64) == 0)
+                        {
+                            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                            close(fd);
+                            exit(1);
+                        }
                         if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
                         {
                             // want to pong;

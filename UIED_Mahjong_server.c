@@ -470,39 +470,13 @@ int deal(int playernow) {
     {
         for (int j = 0; j < 16; ++j)
         {
-            sprintf(sendline, "%d %d\n", players[i]->decks[j].type, players[i]->decks[j].number); // i-th mj, TYPE, NUMBER.
-            write(players[i]->fd, sendline, strlen(sendline));
-            memset(sendline, 0, strlen(sendline));
-
-            if (read(players[i]->fd, recvline, MAXLINE) <= 0)
-            {
-                printf("ERROR OCCURED when transferring decks. exiting...\n");
-                exit(1);
-            }
-            else if (strncmp(recvline, "ACK\n", 4) == 0)
-            {
-                memset(recvline, 0, strlen(recvline));
-            }
+            write_message_wait_ack(players[i]->fd, "%d %d\n", players[i]->decks[j].type, players[i]->decks[j].number); // i-th mj, TYPE, NUMBER.
         }
         for (int j = 0; j < players[i]->flower_index; ++j)
         {
-            sprintf(sendline, "%d\n", players[i]->flowers[j].number); // i-th mj, TYPE, NUMBER.
-            write(players[i]->fd, sendline, strlen(sendline));
-            memset(sendline, 0, strlen(sendline));
-
-            if (read(players[i]->fd, recvline, MAXLINE) <= 0)
-            {
-                printf("ERROR OCCURED when transferring flowers. exiting...\n");
-                exit(1);
-            }
-            else if (strncmp(recvline, "ACK\n", 4) == 0)
-            {
-                memset(recvline, 0, strlen(recvline));
-            }
+            write_message_wait_ack(players[i]->fd, "%d\n", players[i]->flowers[j].number); // i-th mj, TYPE, NUMBER.
         }
-        sprintf(sendline, "transfer complete\n");
-        write(players[i]->fd, sendline, strlen(sendline));
-        memset(sendline, 0, strlen(sendline));
+        write_message_wait_ack(players[i]->fd, "transfer complete\n");
     }
     return 0;
 }
@@ -886,6 +860,7 @@ int broadcast_discard_mj(int playernow) {
             write_message_wait_ack(players[(playernow + 3) % 4]->fd, "(Discard) Player %d discarded BAI.\n", playernow);
         }
     }
+    return 0;
 }
 
 int discard(int playernow) {
@@ -1388,7 +1363,8 @@ int game() {
         write_message_wait_ack(players[2]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
         write_message_wait_ack(players[3]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
 
-#ifdef DEBUG printf("ALL WRITTEN AND ACKED\n");
+#ifdef DEBUG
+        printf("ALL WRITTEN AND ACKED\n");
 #endif
         // the game has set
         if (game_set_display() == 1)
