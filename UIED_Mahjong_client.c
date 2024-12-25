@@ -550,10 +550,6 @@ int mj_compare(struct mj a, struct mj b) {
 }
 
 int client_game_set() {
-#ifdef DEBUG
-    printf("ENTERING CLIENT GAME SET\n");
-#endif
-
     printf("%s", recvline);
     memset(recvline, 0, strlen(recvline));
 
@@ -638,9 +634,6 @@ int game() {
         for (;;)
         {
             print_deck(decks, door, discarded_mj, 0, 0);
-#ifdef DEBUG
-            printf("pd in 635.\n");
-#endif
 
             if (read_and_ack(fd) != 0)
             {
@@ -971,6 +964,10 @@ int game() {
                         }
                     }
                 }
+                else if (strncmp(recvline, "(End) ", 6) == 0)
+                {
+                    break;
+                }
                 else
                 {
                     printf("received this, please debug: %s", recvline);
@@ -978,9 +975,6 @@ int game() {
                 }
             }
         }
-#ifdef DEBUG
-        printf("here at 911, you are out of the main loop!!!\n");
-#endif
 
         if (client_game_set() == 1)
         {

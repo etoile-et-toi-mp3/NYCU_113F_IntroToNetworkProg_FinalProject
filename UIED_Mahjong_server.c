@@ -214,8 +214,8 @@ int connection_establish() {
 
                 // Player successfully connected
                 printf("A client is connected!\n");
-                
-                sprintf(sendline, "(join) You are the %d-th player, let's wait for others...\n", connection_count+1);
+
+                sprintf(sendline, "(join) You are the %d-th player, let's wait for others...\n", connection_count + 1);
                 write(pre_players[i]->fd, sendline, strlen(sendline));
                 memset(sendline, 0, strlen(sendline));
 
@@ -901,6 +901,23 @@ int draw_n_discard(int playernow) {
     return 0;
 }
 
+int is_gang_possible(struct mj *deck, int nc) {
+    int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
+    memset(count, 0, 34 * sizeof(int));
+
+    for (int j = 0; j < nc; ++j)
+    {
+        count[(deck[j].type - 1) * 9 + deck[j].number - 1]++;
+    }
+
+    if (count[(discarded_mj.type - 1) * 9 + discarded_mj.number - 1] >= 3)
+    {
+        // this deck can gang!
+        return 1;
+    }
+    return 0;
+}
+
 int is_pong_possible(struct mj *deck, int nc) {
     int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
     memset(count, 0, 34 * sizeof(int));
@@ -1273,7 +1290,20 @@ int othersreaction(int *playernowp) {
 }
 
 int game_set_display() {
-    printf("ENTERING GAMESETDISPLAY\n");
+    if (winner == -1)
+    {
+        write_message_wait_ack(players[0]->fd, "(End) No more mjs can be draw, game is finished. Continue for next round? [Y/n]\n");
+        write_message_wait_ack(players[1]->fd, "(End) No more mjs can be draw, game is finished. Continue for next round? [Y/n]\n");
+        write_message_wait_ack(players[2]->fd, "(End) No more mjs can be draw, game is finished. Continue for next round? [Y/n]\n");
+        write_message_wait_ack(players[3]->fd, "(End) No more mjs can be draw, game is finished. Continue for next round? [Y/n]\n");
+    }
+    else
+    {
+        write_message_wait_ack(players[0]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
+        write_message_wait_ack(players[1]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
+        write_message_wait_ack(players[2]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
+        write_message_wait_ack(players[3]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
+    }
 
     int newgame_count = 0;
 
@@ -1358,15 +1388,16 @@ int game() {
             {
                 break;
             }
+            if (take_index == 144)
+            {
+                // no more game
+                break;
+            }
         }
 
 #ifdef DEBUG
         printf("a player end their turn\n");
 #endif
-        write_message_wait_ack(players[0]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
-        write_message_wait_ack(players[1]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
-        write_message_wait_ack(players[2]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
-        write_message_wait_ack(players[3]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
 
 #ifdef DEBUG
         printf("ALL WRITTEN AND ACKED\n");
