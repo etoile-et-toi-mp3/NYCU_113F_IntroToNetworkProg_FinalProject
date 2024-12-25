@@ -533,6 +533,91 @@ int client_discard() {
     return 0;
 }
 
+int client_quiet_gang() {
+    read_and_ack(fd);
+    if (strncmp(recvline, "You can quietly-gang.\n", 22) == 0)
+    {
+        memset(recvline, 0, strlen(recvline));
+        // you grabbed something that can be quietly ganged;
+
+        char answer[64];
+        for (;;)
+        {
+            printf("You can quietly-gang, proceed? [Y/n]\n");
+            if (read(STDIN_FILENO, answer, 64) == 0)
+            {
+                printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                close(fd);
+                exit(1);
+            }
+            if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
+            {
+                // want to quietly_gang;
+                write_message_wait_ack(fd, "YES!\n");
+
+                door[door_index++] = decks[normal_capacity];
+                door[door_index++] = decks[normal_capacity];
+                door[door_index++] = decks[normal_capacity];
+                door[door_index++] = decks[normal_capacity];
+
+                int need = 3;
+                for (int i = 0; i < normal_capacity; ++i)
+                {
+                    if (mj_compare(decks[normal_capacity], decks[i]) == 0)
+                    {
+                        decks[i].type = 0;
+                        decks[i].number = 0;
+                        need--;
+                        if (need == 0)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                need = 3;
+                for (int i = 0; i < normal_capacity; ++i)
+                {
+                    if (decks[i].type == 0 && decks[i].number == 0)
+                    {
+                        swap(&decks[i], &decks[normal_capacity - 4 + need]);
+                        need--;
+                        if (need == 0)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                normal_capacity -= 3;
+
+                discarded_mj.type = 0;
+                discarded_mj.number = 0;
+
+                decks_quick_sort(decks, 0, normal_capacity - 1);
+                return 1;
+            }
+            else if (strncmp(answer, "n\n", 2) == 0)
+            {
+                // don't want to pong;
+                write_message_wait_ack(fd, "NO!\n");
+                return 0;
+            }
+            else
+            {
+                // unexpected chars received.
+                // back into the loop until correct response is given.
+                memset(answer, 0, strlen(answer));
+            }
+        }
+    }
+    else
+    {
+        memset(recvline, 0, strlen(recvline));
+    }
+    return 0;
+}
+
 int mj_compare(struct mj a, struct mj b) {
     // if a > b => return -1
     // if a = b => return 0
@@ -649,17 +734,18 @@ int game() {
                     // yeah it's your turn;
                     client_draw();
                     print_deck(decks, door, discarded_mj, 1, 1);
-#ifdef DEBUG
-                    printf("pd in 653.\n");
-#endif
                     if (client_is_hu() == 1)
                     {
                         // really won
-#ifdef DEBUG
-                        printf("continuing in 654.\n");
-#endif
-
                         continue;
+                    }
+                    while (client_quiet_gang() == 1)
+                    {
+                        client_draw();
+                        if (client_is_hu() == 1)
+                        {
+                            return 1;
+                        }
                     }
                     client_discard();
                     continue;
@@ -790,6 +876,94 @@ int game() {
 
                             decks_quick_sort(decks, 0, normal_capacity);
 
+                            if (client_is_hu() == 1)
+                            {
+                                // really won
+#ifdef DEBUG
+                                printf("breaking in 784, hu kakutei after pong\n");
+#endif
+
+                                break;
+                            }
+                            client_discard();
+                            break;
+                        }
+                        else if (strncmp(answer, "n\n", 2) == 0)
+                        {
+                            // don't want to pong;
+                            write_message_wait_ack(fd, "NO!\n");
+                            break;
+                        }
+                        else
+                        {
+                            // unexpected chars received.
+                            // back into the loop until correct response is given.
+                            memset(answer, 0, strlen(answer));
+                        }
+                    }
+                }
+                else if (strncmp(recvline, "You can gang.\n", 15) == 0)
+                {
+                    memset(recvline, 0, strlen(recvline));
+                    // yeah someone discarded something that you can gang;
+
+                    char answer[64];
+                    for (;;)
+                    {
+                        printf("You can gang, proceed? [Y/n]\n");
+                        if (read(STDIN_FILENO, answer, 64) == 0)
+                        {
+                            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                            close(fd);
+                            exit(1);
+                        }
+                        if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
+                        {
+                            // want to pong;
+                            write_message_wait_ack(fd, "YES!\n");
+
+                            door[door_index++] = discarded_mj;
+                            door[door_index++] = discarded_mj;
+                            door[door_index++] = discarded_mj;
+                            door[door_index++] = discarded_mj;
+
+                            int need = 3;
+                            for (int i = 0; i < normal_capacity; ++i)
+                            {
+                                if (mj_compare(discarded_mj, decks[i]) == 0)
+                                {
+                                    decks[i].type = 0;
+                                    decks[i].number = 0;
+                                    need--;
+                                    if (need == 0)
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            need = 3;
+                            for (int i = 0; i < normal_capacity; ++i)
+                            {
+                                if (decks[i].type == 0 && decks[i].number == 0)
+                                {
+                                    swap(&decks[i], &decks[normal_capacity - 4 + need]);
+                                    need--;
+                                    if (need == 0)
+                                    {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            normal_capacity -= 3;
+
+                            discarded_mj.type = 0;
+                            discarded_mj.number = 0;
+
+                            decks_quick_sort(decks, 0, normal_capacity - 1);
+
+                            client_draw();
                             if (client_is_hu() == 1)
                             {
                                 // really won

@@ -887,6 +887,71 @@ int discard(int playernow) {
     return 0;
 }
 
+int quiet_gang(int playernow){
+    int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
+    memset(count, 0, 34 * sizeof(int));
+
+    for (int j = 0; j < players[playernow]->normal_capacity; ++j)
+    {
+        count[(players[playernow]->decks[j].type - 1) * 9 + players[playernow]->decks[j].number - 1]++;
+    }
+
+    if (count[(players[playernow]->decks[players[playernow]->normal_capacity].type - 1) * 9 + players[playernow]->decks[players[playernow]->normal_capacity].number - 1] == 4)
+    {
+        // this deck can gang!
+        write_message_wait_ack(players[playernow]->fd, "You can quietly-gang.\n");
+        read_and_ack(players[playernow]->fd);
+        if (strncmp(recvline, "YES!\n", 5) == 0)
+        {
+            players[playernow]->door[players[playernow]->door_index++] = players[playernow]->decks[players[playernow]->normal_capacity];
+            int need = 3;
+            for (int i = 0; i < players[playernow]->normal_capacity; ++i)
+            {
+                if (mj_compare(players[playernow]->decks[players[playernow]->normal_capacity], players[playernow]->decks[i]) == 0)
+                {
+                    players[playernow]->door[players[playernow]->door_index++] = players[playernow]->decks[players[playernow]->normal_capacity];
+                    players[playernow]->decks[i].type = 0;
+                    players[playernow]->decks[i].number = 0;
+                    need--;
+                    if (need == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            need = 3;
+            for (int i = 0; i < players[playernow]->normal_capacity; ++i)
+            {
+                if (players[playernow]->decks[i].type == 0 && players[playernow]->decks[i].number == 0)
+                {
+                    swap(&players[playernow]->decks[i], &players[playernow]->decks[players[playernow]->normal_capacity - 4 + need]);
+                    need--;
+                    if (need == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            players[playernow]->normal_capacity -= 3;
+            decks_quick_sort(players[playernow]->decks, 0, players[playernow]->normal_capacity - 1);
+
+            write_message_wait_ack(players[(playernow + 1) % 4]->fd, "(Announce) player %d quietly-ganged something...\n", playernow);
+            write_message_wait_ack(players[(playernow + 2) % 4]->fd, "(Announce) player %d quietly-ganged something...\n", playernow);
+            write_message_wait_ack(players[(playernow + 3) % 4]->fd, "(Announce) player %d quietly-ganged something...\n", playernow);
+
+            discarded_mj.number = 0;
+            discarded_mj.type = 0;
+            memset(recvline, 0, strlen(recvline));
+            return 0;
+        }
+    }
+    else 
+    {
+        write_message_wait_ack(players[playernow]->fd, "You cannot quietly-gang.\n");
+    }
+    return 0;
+}
+
 int draw_n_discard(int playernow) {
     write_message_wait_ack(players[playernow]->fd, "your turn\n");
 
@@ -896,6 +961,14 @@ int draw_n_discard(int playernow) {
         return 1;
     }
     print_deck(players[playernow]->decks, players[playernow]->door, discarded_mj, 0, 1);
+    while(quiet_gang(playernow) == 1)
+    {
+        draw(playernow);
+        if (is_hu(playernow) == 1)
+        {
+            return 1;
+        }
+    }
     discard(playernow);
     print_deck(players[playernow]->decks, players[playernow]->door, discarded_mj, 0, 0);
     return 0;
@@ -1044,7 +1117,179 @@ int othersreaction(int *playernowp) {
             return 1;
         }
     }
-    // Case 1: others may be able to 碰
+    // Case 1: others may be able to 槓
+    if (is_gang_possible(players[(*playernowp + 1) % 4]->decks, players[(*playernowp + 1) % 4]->normal_capacity) == 1)
+    {
+        write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "You can gang.\n");
+        read_and_ack(players[(*playernowp + 1) % 4]->fd);
+        if (strncmp(recvline, "YES!\n", 5) == 0)
+        {
+            *playernowp = (*playernowp + 1) % 4;
+            players[*playernowp]->door[players[*playernowp]->door_index++] = discarded_mj;
+            int need = 3;
+            for (int i = 0; i < players[*playernowp]->normal_capacity; ++i)
+            {
+                if (mj_compare(discarded_mj, players[*playernowp]->decks[i]) == 0)
+                {
+                    players[*playernowp]->door[players[*playernowp]->door_index++] = discarded_mj;
+                    players[*playernowp]->decks[i].type = 0;
+                    players[*playernowp]->decks[i].number = 0;
+                    need--;
+                    if (need == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            need = 3;
+            for (int i = 0; i < players[*playernowp]->normal_capacity; ++i)
+            {
+                if (players[*playernowp]->decks[i].type == 0 && players[*playernowp]->decks[i].number == 0)
+                {
+                    swap(&players[*playernowp]->decks[i], &players[*playernowp]->decks[players[*playernowp]->normal_capacity - 4 + need]);
+                    need--;
+                    if (need == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            players[*playernowp]->normal_capacity -= 3;
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity - 1);
+
+            write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ganged it\n", *playernowp);
+            write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ganged it\n", *playernowp);
+            write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ganged it\n", *playernowp);
+
+            discarded_mj.number = 0;
+            discarded_mj.type = 0;
+
+            draw(*playernowp);
+            if (is_hu(*playernowp) == 1)
+            {
+                return 1;
+            }
+            discard(*playernowp);
+            othersreaction(playernowp);
+            memset(recvline, 0, strlen(recvline));
+            return 0;
+        }
+    }
+    if (is_gang_possible(players[(*playernowp + 2) % 4]->decks, players[(*playernowp + 2) % 4]->normal_capacity) == 1)
+    {
+        write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "You can gang.\n");
+        read_and_ack(players[(*playernowp + 2) % 4]->fd);
+        if (strncmp(recvline, "YES!\n", 5) == 0)
+        {
+            *playernowp = (*playernowp + 2) % 4;
+            players[*playernowp]->door[players[*playernowp]->door_index++] = discarded_mj;
+            int need = 3;
+            for (int i = 0; i < players[*playernowp]->normal_capacity; ++i)
+            {
+                if (mj_compare(discarded_mj, players[*playernowp]->decks[i]) == 0)
+                {
+                    players[*playernowp]->door[players[*playernowp]->door_index++] = discarded_mj;
+                    players[*playernowp]->decks[i].type = 0;
+                    players[*playernowp]->decks[i].number = 0;
+                    need--;
+                    if (need == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            need = 3;
+            for (int i = 0; i < players[*playernowp]->normal_capacity; ++i)
+            {
+                if (players[*playernowp]->decks[i].type == 0 && players[*playernowp]->decks[i].number == 0)
+                {
+                    swap(&players[*playernowp]->decks[i], &players[*playernowp]->decks[players[*playernowp]->normal_capacity - 4 + need]);
+                    need--;
+                    if (need == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            players[*playernowp]->normal_capacity -= 3;
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity - 1);
+
+            write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ganged it\n", *playernowp);
+            write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ganged it\n", *playernowp);
+            write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ganged it\n", *playernowp);
+
+            discarded_mj.number = 0;
+            discarded_mj.type = 0;
+
+            draw(*playernowp);
+            if (is_hu(*playernowp) == 1)
+            {
+                return 1;
+            }
+            discard(*playernowp);
+            othersreaction(playernowp);
+            memset(recvline, 0, strlen(recvline));
+            return 0;
+        }
+    }
+    if (is_gang_possible(players[(*playernowp + 3) % 4]->decks, players[(*playernowp + 3) % 4]->normal_capacity) == 1)
+    {
+        write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "You can gang.\n");
+        read_and_ack(players[(*playernowp + 3) % 4]->fd);
+        if (strncmp(recvline, "YES!\n", 5) == 0)
+        {
+            *playernowp = (*playernowp + 3) % 4;
+            players[*playernowp]->door[players[*playernowp]->door_index++] = discarded_mj;
+            int need = 3;
+            for (int i = 0; i < players[*playernowp]->normal_capacity; ++i)
+            {
+                if (mj_compare(discarded_mj, players[*playernowp]->decks[i]) == 0)
+                {
+                    players[*playernowp]->door[players[*playernowp]->door_index++] = discarded_mj;
+                    players[*playernowp]->decks[i].type = 0;
+                    players[*playernowp]->decks[i].number = 0;
+                    need--;
+                    if (need == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            need = 3;
+            for (int i = 0; i < players[*playernowp]->normal_capacity; ++i)
+            {
+                if (players[*playernowp]->decks[i].type == 0 && players[*playernowp]->decks[i].number == 0)
+                {
+                    swap(&players[*playernowp]->decks[i], &players[*playernowp]->decks[players[*playernowp]->normal_capacity - 4 + need]);
+                    need--;
+                    if (need == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            players[*playernowp]->normal_capacity -= 3;
+            decks_quick_sort(players[*playernowp]->decks, 0, players[*playernowp]->normal_capacity - 1);
+
+            write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "(Announce) player %d ganged it\n", *playernowp);
+            write_message_wait_ack(players[(*playernowp + 2) % 4]->fd, "(Announce) player %d ganged it\n", *playernowp);
+            write_message_wait_ack(players[(*playernowp + 3) % 4]->fd, "(Announce) player %d ganged it\n", *playernowp);
+
+            discarded_mj.number = 0;
+            discarded_mj.type = 0;
+
+            draw(*playernowp);
+            if (is_hu(*playernowp) == 1)
+            {
+                return 1;
+            }
+            discard(*playernowp);
+            othersreaction(playernowp);
+            memset(recvline, 0, strlen(recvline));
+            return 0;
+        }
+    }
+    // Case 2: others may be able to 碰
     if (is_pong_possible(players[(*playernowp + 1) % 4]->decks, players[(*playernowp + 1) % 4]->normal_capacity) == 1)
     {
         write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "You can pong.\n");
@@ -1215,7 +1460,7 @@ int othersreaction(int *playernowp) {
             return 0;
         }
     }
-    // Case 2: 下家 may be able to 吃
+    // Case 3: 下家 may be able to 吃
     if (is_eat_possible(players[(*playernowp + 1) % 4]->decks, players[(*playernowp + 1) % 4]->normal_capacity) == 1)
     {
         write_message_wait_ack(players[(*playernowp + 1) % 4]->fd, "You can eat.\n");
@@ -1281,7 +1526,7 @@ int othersreaction(int *playernowp) {
             return 0;
         }
     }
-    // Case 3: no players can do anything
+    // Case 4: no players can do anything
     write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
     players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
     discarded_mj.type = 0;
