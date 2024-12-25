@@ -112,7 +112,9 @@ int write_message_wait_ack(int fd, const char *format, ...) {
     {
         if (strncmp(recvline, "ACK\n", 4) == 0)
         {
+#ifdef DEBUG
             printf("ACK Received\n");
+#endif
             memset(recvline, 0, strlen(recvline));
             return 0;
         }
@@ -134,11 +136,15 @@ int read_and_ack(int fd) { // no memset yet, do it yourself
     int n = read(fd, recvline, MAXLINE);
     if (n > 0)
     {
+#ifdef DEBUG
         printf("Received: %s\n", recvline);
-
+#endif
         // Send the ACK
         write(fd, "ACK\n", 4);
+
+#ifdef DEBUG
         printf("ACK sent.\n");
+#endif
         return 0;
     }
     else
@@ -751,7 +757,6 @@ int hu_recursive_check(int *count, int n) {
 
 int hu_check(struct mj *decks, int nc) {
     // hu_check can sort the decks for its own purpose, but shouldn't modify the real deck;
-    printf("IN hu_check\n");
     struct mj carbon[17];
     memset(carbon, 0, 17 * sizeof(struct mj));
     memcpy(carbon, decks, (nc + 1) * sizeof(struct mj));
@@ -801,7 +806,6 @@ int is_hu(int playernow) {
         {
             // we have a winner here!
             memset(recvline, 0, strlen(recvline));
-            printf("(in is_hu __LINE__ == 803) we have a winner here!\n");
             winner = playernow;
             return 1;
         }
@@ -891,7 +895,6 @@ int discard(int playernow) {
     discarded_mj.type = players[playernow]->decks[index].type;
     discarded_mj.number = players[playernow]->decks[index].number;
     memset(recvline, 0, strlen(recvline));
-    printf("player %d discarded index %d: %d, %d\n", playernow, index, discarded_mj.type, discarded_mj.number);
 
     swap(&players[playernow]->decks[players[playernow]->normal_capacity], &players[playernow]->decks[index]);
     players[playernow]->decks[players[playernow]->normal_capacity].type = 0;
@@ -906,12 +909,10 @@ int discard(int playernow) {
 
 int draw_n_discard(int playernow) {
     write_message_wait_ack(players[playernow]->fd, "your turn\n");
-    // sleep(1);
 
     draw(playernow);
     if (is_hu(playernow) == 1)
     {
-        printf("is hu in 910, ready to return 1\n");
         return 1;
     }
     print_deck(players[playernow]->decks, players[playernow]->door, discarded_mj, 0, 1);
@@ -926,7 +927,6 @@ int is_pong_possible(struct mj *deck, int nc) {
 
     for (int j = 0; j < nc; ++j)
     {
-        // printf("(in pong) this is recording mj's index: %d, and it's: %d, %d\n", j, deck[j].type, deck[j].number);
         count[(deck[j].type - 1) * 9 + deck[j].number - 1]++;
     }
 
@@ -1372,21 +1372,24 @@ int game() {
         {
             if (draw_n_discard(playernow) == 1)
             {
-                printf("(line 1331) breaking from dnd\n");
                 break;
             }
             if (othersreaction(&playernow) == 1) // note that this is a value_result argument. just think about it and you will know why we do this.
             {
-                printf("(line 1348) breaking cause othersreaction == 1\n");
                 break;
             }
         }
+
+#ifdef DEBUG
         printf("a player end their turn\n");
+#endif
         write_message_wait_ack(players[0]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
         write_message_wait_ack(players[1]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
         write_message_wait_ack(players[2]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
         write_message_wait_ack(players[3]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
-        printf("ALL WRITTEN AND ACKED\n");
+
+#ifdef DEBUG printf("ALL WRITTEN AND ACKED\n");
+#endif
         // the game has set
         if (game_set_display() == 1)
         {
