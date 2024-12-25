@@ -1534,6 +1534,7 @@ int othersreaction(int *playernowp) {
     printf("this is sea_index: %d\n", players[*playernowp]->sea_index);
     discarded_mj.type = 0;
     discarded_mj.number = 0;
+    printf("exiting othersreaction\n");
     return 0;
 }
 
