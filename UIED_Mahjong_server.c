@@ -104,7 +104,7 @@ int write_message_wait_ack(int fd, const char *format, ...) {
     memset(sendline, 0, strlen(sendline));
 
     // wait ACK from the client
-    int n = read(fd, recvline, MAXLINE);
+    int n = readline(fd, recvline, MAXLINE);
     if (n > 0)
     {
         if (strncmp(recvline, "ACK\n", 4) == 0)
@@ -130,7 +130,7 @@ int write_message_wait_ack(int fd, const char *format, ...) {
 }
 
 int read_and_ack(int fd) { // no memset yet, do it yourself
-    int n = read(fd, recvline, MAXLINE);
+    int n = readline(fd, recvline, MAXLINE);
     if (n > 0)
     {
 #ifdef DEBUG
@@ -1634,9 +1634,7 @@ int game() {
     // let the players know which id they are
     for (int i = 0; i < 4; ++i)
     {
-        sprintf(sendline, "%d-th\n", i);
-        write(players[i]->fd, sendline, strlen(sendline));
-        memset(sendline, 0, strlen(sendline));
+        write_message_wait_ack(players[i]->fd, "%d-th\n", i);
     }
 
     for (int startplayer = 0; startplayer < 4; ++startplayer)

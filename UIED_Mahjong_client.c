@@ -50,7 +50,7 @@ int write_message_wait_ack(int fd, const char *format, ...) {
     memset(sendline, 0, strlen(sendline));
 
     // wait ACK from the client
-    int n = read(fd, recvline, MAXLINE);
+    int n = readline(fd, recvline, MAXLINE);
     if (n > 0)
     {
         if (strncmp(recvline, "ACK\n", 4) == 0)
@@ -78,7 +78,7 @@ int write_message_wait_ack(int fd, const char *format, ...) {
 }
 
 int read_and_ack(int fd) { // no memset yet, do it yourself
-    int n = read(fd, recvline, MAXLINE);
+    int n = readline(fd, recvline, MAXLINE);
     if (n > 0)
     {
 #ifdef DEBUG
@@ -711,7 +711,7 @@ int client_game_set() {
 }
 
 int receive_id() {
-    read(fd, recvline, MAXLINE);
+    read_and_ack(fd);
     id_num = (int)recvline[0] - '0';
     system("clear");
     printf("This is your id: %d\n", id_num);
