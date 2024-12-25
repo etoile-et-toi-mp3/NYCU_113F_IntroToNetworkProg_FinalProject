@@ -514,6 +514,10 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
             printf("|%s|\n", type[on_board.type]);
         printf("‾‾‾‾\n");
     }
+
+    // print some msg
+    printf("Your decks: \n");
+
     // print the index
     if (show_index)
     {
@@ -530,9 +534,6 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         }
         printf("\n");
     }
-
-    // print some msg
-    printf("Your decks: \n");
 
     // print the cap
     printf("_");
