@@ -701,8 +701,9 @@ int client_game_set() {
         memset(recvline, 0, strlen(recvline));
         return 1;
     }
-    else if (strncmp(recvline, "no more game!\n", 14) == 0)
+    else if (strncmp(recvline, "Some players don't want to play, no more game!\n", 47) == 0)
     {
+        printf("%s", recvline);
         memset(recvline, 0, strlen(recvline));
         return 0;
     }
@@ -745,438 +746,453 @@ int game() {
         {
             print_deck(decks, door, discarded_mj, 0, 0);
 
-            if (read_and_ack(fd) != 0)
+            testset = rset;
+
+            select(maxfd + 1, &testset, NULL, NULL, NULL);
+
+            if (FD_ISSET(STDIN_FILENO, &testset))
             {
-                printf("Server terminated prematurely!? Exiting...\n");
-                exit(1);
+                // sending message in this phase is not allowed, so we just clear it.
+                char garbage[MAXLINE];
+                read(STDIN_FILENO, garbage, MAXLINE);
+                memset(garbage, 0, strlen(garbage));
             }
-            else
+
+            if (FD_ISSET(fd, &testset))
             {
-                if (strncmp(recvline, "your turn\n", 10) == 0)
+                if (read_and_ack(fd) != 0)
                 {
-                    sprintf(message, "%sIt's your turn!\n", message);
-                    memset(recvline, 0, strlen(recvline));
-                    // yeah it's your turn;
-                    client_draw();
-                    print_deck(decks, door, discarded_mj, 1, 1);
-                    if (client_is_hu() == 1)
-                    {
-                        // really won
-                        continue;
-                    }
-                    while (client_quiet_gang() == 1)
-                    {
-                        client_draw();
-                        if (client_is_hu() == 1)
-                        {
-                            return 1;
-                        }
-                    }
-                    client_discard();
-                    continue;
-                }
-                else if (strncmp(recvline, "(Discard) ", 6) == 0)
-                {
-                    // some other player discarded out something
-
-                    memset(message, 0, strlen(message));
-
-                    strncpy(message, recvline, strlen(recvline));
-
-                    // record the discarded mj
-                    if ('A' <= recvline[29] && recvline[29] <= 'Z')
-                    {
-                        // this is a DAZI;
-                        discarded_mj.type = DAZI;
-                        if (recvline[29] == 'E')
-                        {
-                            discarded_mj.number = 1;
-                        }
-                        else if (recvline[29] == 'S')
-                        {
-                            discarded_mj.number = 2;
-                        }
-                        else if (recvline[29] == 'W')
-                        {
-                            discarded_mj.number = 3;
-                        }
-                        else if (recvline[29] == 'N')
-                        {
-                            discarded_mj.number = 4;
-                        }
-                        else if (recvline[29] == 'Z')
-                        {
-                            discarded_mj.number = 5;
-                        }
-                        else if (recvline[29] == 'F')
-                        {
-                            discarded_mj.number = 6;
-                        }
-                        else if (recvline[29] == 'B')
-                        {
-                            discarded_mj.number = 7;
-                        }
-                    }
-                    else
-                    {
-                        discarded_mj.number = recvline[29] - '0';
-                        if (recvline[31] == 'W')
-                        {
-                            discarded_mj.type = WAN;
-                        }
-                        else
-                        {
-                            if (recvline[32] == 'O')
-                            {
-                                discarded_mj.type = TONG;
-                            }
-                            else
-                            {
-                                discarded_mj.type = TIAO;
-                            }
-                        }
-                    }
-                    memset(recvline, 0, strlen(recvline));
-                }
-                else if (strncmp(recvline, "(Announce) ", 11) == 0)
-                {
-                    // this is an announcement, just print it onto stdout;
-
-                    memset(message, 0, strlen(message));
-                    strncpy(message, recvline, strlen(recvline));
-                    memset(recvline, 0, strlen(recvline));
-                }
-                else if (strncmp(recvline, "You can pong.\n", 15) == 0)
-                {
-                    memset(recvline, 0, strlen(recvline));
-                    // yeah someone discarded something that you can pong;
-
-                    char answer[64];
-                    for (;;)
-                    {
-                        printf("You can pong, proceed? [Y/n]\n");
-                        if (read(STDIN_FILENO, answer, 64) == 0)
-                        {
-                            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
-                            close(fd);
-                            exit(1);
-                        }
-                        if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
-                        {
-                            // want to pong;
-                            write_message_wait_ack(fd, "YES!\n");
-
-                            door[door_index++] = discarded_mj;
-                            door[door_index++] = discarded_mj;
-                            door[door_index++] = discarded_mj;
-
-                            int need = 2;
-                            for (int i = 0; i < normal_capacity; ++i)
-                            {
-                                if (mj_compare(discarded_mj, decks[i]) == 0)
-                                {
-                                    decks[i].type = 0;
-                                    decks[i].number = 0;
-                                    need--;
-                                    if (need == 0)
-                                    {
-                                        break;
-                                    }
-                                }
-                            }
-
-                            need = 2;
-                            for (int i = 0; i < normal_capacity; ++i)
-                            {
-                                if (decks[i].type == 0 && decks[i].number == 0)
-                                {
-                                    swap(&decks[i], &decks[normal_capacity - 3 + need]);
-                                    need--;
-                                    if (need == 0)
-                                    {
-                                        break;
-                                    }
-                                }
-                            }
-
-                            normal_capacity -= 3;
-
-                            discarded_mj.type = 0;
-                            discarded_mj.number = 0;
-
-                            decks_quick_sort(decks, 0, normal_capacity);
-
-                            if (client_is_hu() == 1)
-                            {
-                                // really won
-#ifdef DEBUG
-                                printf("breaking in 784, hu kakutei after pong\n");
-#endif
-
-                                break;
-                            }
-                            client_discard();
-                            break;
-                        }
-                        else if (strncmp(answer, "n\n", 2) == 0)
-                        {
-                            // don't want to pong;
-                            write_message_wait_ack(fd, "NO!\n");
-                            break;
-                        }
-                        else
-                        {
-                            // unexpected chars received.
-                            // back into the loop until correct response is given.
-                            memset(answer, 0, strlen(answer));
-                        }
-                    }
-                }
-                else if (strncmp(recvline, "You can gang.\n", 15) == 0)
-                {
-                    memset(recvline, 0, strlen(recvline));
-                    // yeah someone discarded something that you can gang;
-
-                    char answer[64];
-                    for (;;)
-                    {
-                        printf("You can gang, proceed? [Y/n]\n");
-                        if (read(STDIN_FILENO, answer, 64) == 0)
-                        {
-                            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
-                            close(fd);
-                            exit(1);
-                        }
-                        if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
-                        {
-                            // want to pong;
-                            write_message_wait_ack(fd, "YES!\n");
-
-                            door[door_index++] = discarded_mj;
-                            door[door_index++] = discarded_mj;
-                            door[door_index++] = discarded_mj;
-                            door[door_index++] = discarded_mj;
-
-                            int need = 3;
-                            for (int i = 0; i < normal_capacity; ++i)
-                            {
-                                if (mj_compare(discarded_mj, decks[i]) == 0)
-                                {
-                                    decks[i].type = 0;
-                                    decks[i].number = 0;
-                                    need--;
-                                    if (need == 0)
-                                    {
-                                        break;
-                                    }
-                                }
-                            }
-
-                            need = 3;
-                            for (int i = 0; i < normal_capacity; ++i)
-                            {
-                                if (decks[i].type == 0 && decks[i].number == 0)
-                                {
-                                    swap(&decks[i], &decks[normal_capacity - 4 + need]);
-                                    need--;
-                                    if (need == 0)
-                                    {
-                                        break;
-                                    }
-                                }
-                            }
-
-                            normal_capacity -= 3;
-
-                            discarded_mj.type = 0;
-                            discarded_mj.number = 0;
-
-                            decks_quick_sort(decks, 0, normal_capacity - 1);
-
-                            client_draw();
-                            if (client_is_hu() == 1)
-                            {
-                                // really won
-#ifdef DEBUG
-                                printf("breaking in 784, hu kakutei after pong\n");
-#endif
-
-                                break;
-                            }
-                            client_discard();
-                            break;
-                        }
-                        else if (strncmp(answer, "n\n", 2) == 0)
-                        {
-                            // don't want to pong;
-                            write_message_wait_ack(fd, "NO!\n");
-                            break;
-                        }
-                        else
-                        {
-                            // unexpected chars received.
-                            // back into the loop until correct response is given.
-                            memset(answer, 0, strlen(answer));
-                        }
-                    }
-                }
-                else if (strncmp(recvline, "You can eat.\n", 13) == 0)
-                {
-                    memset(recvline, 0, strlen(recvline));
-                    // yeah someone discarded something that you can eat;
-
-                    char answer[64] = {0};
-                    for (;;)
-                    {
-                        printf("You can eat, proceed? [Y/n]\n");
-                        if (read(STDIN_FILENO, answer, 64) == 0)
-                        {
-                            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
-                            close(fd);
-                            exit(1);
-                        }
-                        if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
-                        {
-                            memset(answer, 0, strlen(answer));
-
-                            // want to eat;
-                            write_message_wait_ack(fd, "YES!\n");
-
-                            int eatindex1 = -1, eatindex2 = -1;
-                            print_deck(decks, door, discarded_mj, 0, 1);
-#ifdef DEBUG
-                            printf("pd in 844.\n");
-#endif
-                            for (;;)
-                            {
-                                read_and_ack(fd);
-                                if (strncmp(recvline, "Type which 2 of the mjs you want to eat with: \n", 47) == 0)
-                                {
-                                    printf("%s", recvline);
-                                    memset(recvline, 0, strlen(recvline));
-
-                                    if (read(STDIN_FILENO, answer, 64) == 0)
-                                    {
-                                        printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
-                                        close(fd);
-                                        exit(1);
-                                    }
-                                    sscanf(answer, "%d %d", &eatindex1, &eatindex2);
-                                    write_message_wait_ack(fd, answer);
-
-                                    read_and_ack(fd);
-                                    if (strncmp(recvline, "eatable.\n", 10) == 0)
-                                    {
-                                        // good eat;
-                                        struct mj eat_temp[3];
-                                        eat_temp[0] = decks[eatindex1];
-                                        eat_temp[1] = decks[eatindex2];
-                                        eat_temp[2] = discarded_mj;
-                                        decks_quick_sort(eat_temp, 0, 2);
-                                        door[door_index++] = eat_temp[0];
-                                        door[door_index++] = eat_temp[1];
-                                        door[door_index++] = eat_temp[2];
-                                        decks[eatindex1].type = 0;
-                                        decks[eatindex1].number = 0;
-                                        decks[eatindex2].type = 0;
-                                        decks[eatindex2].number = 0;
-                                        swap(&decks[eatindex1], &decks[normal_capacity - 1]);
-                                        swap(&decks[eatindex2], &decks[normal_capacity - 2]);
-
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        printf("%s", recvline);
-                                    }
-                                    memset(recvline, 0, strlen(recvline));
-                                }
-                            }
-
-                            normal_capacity -= 3;
-
-                            decks_quick_sort(decks, 0, normal_capacity);
-
-                            if (client_is_hu() == 1)
-                            {
-                                // really won
-#ifdef DEBUG
-                                printf("breaking in 871, hu kakutei after eat\n");
-#endif
-
-                                break;
-                            }
-                            client_discard();
-                            break;
-                        }
-                        else if (strncmp(answer, "n\n", 2) == 0)
-                        {
-                            // don't want to eat;
-                            write_message_wait_ack(fd, "NO!\n");
-                            break;
-                        }
-                        else
-                        {
-                            // unexpected chars received.
-                            // back into the loop until correct response is given.
-                            memset(answer, 0, strlen(answer));
-                        }
-                    }
-                }
-                else if (strncmp(recvline, "no one wants it.\n", 17) == 0)
-                {
-                    memset(recvline, 0, strlen(recvline));
-
-                    sea[sea_index++] = discarded_mj;
-                }
-                else if (strncmp(recvline, "(Game) ", 7) == 0)
-                {
-                    // the game has set;
-                    break;
-                }
-                else if (strncmp(recvline, "(Hu) ", 5) == 0)
-                {
-                    // you actually can hu
-                    memset(recvline, 0, strlen(recvline));
-                    char answer[64];
-                    for (;;)
-                    {
-                        printf("You actually can hu already, proceed? [Y/n]\n");
-                        if (read(STDIN_FILENO, answer, 64) == 0)
-                        {
-                            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
-                            close(fd);
-                            exit(1);
-                        }
-                        if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
-                        {
-                            // want to pong;
-                            write_message_wait_ack(fd, "YES!\n");
-                            break;
-                        }
-                        else if (strncmp(answer, "n\n", 2) == 0)
-                        {
-                            // don't want to pong;
-                            write_message_wait_ack(fd, "NO!\n");
-                            break;
-                        }
-                        else
-                        {
-                            // unexpected chars received.
-                            // back into the loop until correct response is given.
-                            memset(answer, 0, strlen(answer));
-                        }
-                    }
-                }
-                else if (strncmp(recvline, "(End) ", 6) == 0)
-                {
-                    // the game has been flushed
-                    break;
+                    printf("Server terminated prematurely!? Exiting...\n");
+                    exit(1);
                 }
                 else
                 {
-                    printf("received this, please debug: %s", recvline);
-                    memset(recvline, 0, strlen(recvline));
+                    if (strncmp(recvline, "your turn\n", 10) == 0)
+                    {
+                        sprintf(message, "%sIt's your turn!\n", message);
+                        memset(recvline, 0, strlen(recvline));
+                        // yeah it's your turn;
+                        client_draw();
+                        print_deck(decks, door, discarded_mj, 1, 1);
+                        if (client_is_hu() == 1)
+                        {
+                            // really won
+                            continue;
+                        }
+                        while (client_quiet_gang() == 1)
+                        {
+                            client_draw();
+                            if (client_is_hu() == 1)
+                            {
+                                return 1;
+                            }
+                        }
+                        client_discard();
+                        continue;
+                    }
+                    else if (strncmp(recvline, "(Discard) ", 6) == 0)
+                    {
+                        // some other player discarded out something
+
+                        memset(message, 0, strlen(message));
+
+                        strncpy(message, recvline, strlen(recvline));
+
+                        // record the discarded mj
+                        if ('A' <= recvline[29] && recvline[29] <= 'Z')
+                        {
+                            // this is a DAZI;
+                            discarded_mj.type = DAZI;
+                            if (recvline[29] == 'E')
+                            {
+                                discarded_mj.number = 1;
+                            }
+                            else if (recvline[29] == 'S')
+                            {
+                                discarded_mj.number = 2;
+                            }
+                            else if (recvline[29] == 'W')
+                            {
+                                discarded_mj.number = 3;
+                            }
+                            else if (recvline[29] == 'N')
+                            {
+                                discarded_mj.number = 4;
+                            }
+                            else if (recvline[29] == 'Z')
+                            {
+                                discarded_mj.number = 5;
+                            }
+                            else if (recvline[29] == 'F')
+                            {
+                                discarded_mj.number = 6;
+                            }
+                            else if (recvline[29] == 'B')
+                            {
+                                discarded_mj.number = 7;
+                            }
+                        }
+                        else
+                        {
+                            discarded_mj.number = recvline[29] - '0';
+                            if (recvline[31] == 'W')
+                            {
+                                discarded_mj.type = WAN;
+                            }
+                            else
+                            {
+                                if (recvline[32] == 'O')
+                                {
+                                    discarded_mj.type = TONG;
+                                }
+                                else
+                                {
+                                    discarded_mj.type = TIAO;
+                                }
+                            }
+                        }
+                        memset(recvline, 0, strlen(recvline));
+                    }
+                    else if (strncmp(recvline, "(Announce) ", 11) == 0)
+                    {
+                        // this is an announcement, just print it onto stdout;
+
+                        memset(message, 0, strlen(message));
+                        strncpy(message, recvline, strlen(recvline));
+                        memset(recvline, 0, strlen(recvline));
+                    }
+                    else if (strncmp(recvline, "You can pong.\n", 15) == 0)
+                    {
+                        memset(recvline, 0, strlen(recvline));
+                        // yeah someone discarded something that you can pong;
+
+                        char answer[64];
+                        for (;;)
+                        {
+                            printf("You can pong, proceed? [Y/n]\n");
+                            if (read(STDIN_FILENO, answer, 64) == 0)
+                            {
+                                printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                                close(fd);
+                                exit(1);
+                            }
+                            if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
+                            {
+                                // want to pong;
+                                write_message_wait_ack(fd, "YES!\n");
+
+                                door[door_index++] = discarded_mj;
+                                door[door_index++] = discarded_mj;
+                                door[door_index++] = discarded_mj;
+
+                                int need = 2;
+                                for (int i = 0; i < normal_capacity; ++i)
+                                {
+                                    if (mj_compare(discarded_mj, decks[i]) == 0)
+                                    {
+                                        decks[i].type = 0;
+                                        decks[i].number = 0;
+                                        need--;
+                                        if (need == 0)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                need = 2;
+                                for (int i = 0; i < normal_capacity; ++i)
+                                {
+                                    if (decks[i].type == 0 && decks[i].number == 0)
+                                    {
+                                        swap(&decks[i], &decks[normal_capacity - 3 + need]);
+                                        need--;
+                                        if (need == 0)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                normal_capacity -= 3;
+
+                                discarded_mj.type = 0;
+                                discarded_mj.number = 0;
+
+                                decks_quick_sort(decks, 0, normal_capacity);
+
+                                if (client_is_hu() == 1)
+                                {
+                                    // really won
+#ifdef DEBUG
+                                    printf("breaking in 784, hu kakutei after pong\n");
+#endif
+
+                                    break;
+                                }
+                                client_discard();
+                                break;
+                            }
+                            else if (strncmp(answer, "n\n", 2) == 0)
+                            {
+                                // don't want to pong;
+                                write_message_wait_ack(fd, "NO!\n");
+                                break;
+                            }
+                            else
+                            {
+                                // unexpected chars received.
+                                // back into the loop until correct response is given.
+                                memset(answer, 0, strlen(answer));
+                            }
+                        }
+                    }
+                    else if (strncmp(recvline, "You can gang.\n", 15) == 0)
+                    {
+                        memset(recvline, 0, strlen(recvline));
+                        // yeah someone discarded something that you can gang;
+
+                        char answer[64];
+                        for (;;)
+                        {
+                            printf("You can gang, proceed? [Y/n]\n");
+                            if (read(STDIN_FILENO, answer, 64) == 0)
+                            {
+                                printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                                close(fd);
+                                exit(1);
+                            }
+                            if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
+                            {
+                                // want to pong;
+                                write_message_wait_ack(fd, "YES!\n");
+
+                                door[door_index++] = discarded_mj;
+                                door[door_index++] = discarded_mj;
+                                door[door_index++] = discarded_mj;
+                                door[door_index++] = discarded_mj;
+
+                                int need = 3;
+                                for (int i = 0; i < normal_capacity; ++i)
+                                {
+                                    if (mj_compare(discarded_mj, decks[i]) == 0)
+                                    {
+                                        decks[i].type = 0;
+                                        decks[i].number = 0;
+                                        need--;
+                                        if (need == 0)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                need = 3;
+                                for (int i = 0; i < normal_capacity; ++i)
+                                {
+                                    if (decks[i].type == 0 && decks[i].number == 0)
+                                    {
+                                        swap(&decks[i], &decks[normal_capacity - 4 + need]);
+                                        need--;
+                                        if (need == 0)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                normal_capacity -= 3;
+
+                                discarded_mj.type = 0;
+                                discarded_mj.number = 0;
+
+                                decks_quick_sort(decks, 0, normal_capacity - 1);
+
+                                client_draw();
+                                if (client_is_hu() == 1)
+                                {
+                                    // really won
+#ifdef DEBUG
+                                    printf("breaking in 784, hu kakutei after pong\n");
+#endif
+
+                                    break;
+                                }
+                                client_discard();
+                                break;
+                            }
+                            else if (strncmp(answer, "n\n", 2) == 0)
+                            {
+                                // don't want to pong;
+                                write_message_wait_ack(fd, "NO!\n");
+                                break;
+                            }
+                            else
+                            {
+                                // unexpected chars received.
+                                // back into the loop until correct response is given.
+                                memset(answer, 0, strlen(answer));
+                            }
+                        }
+                    }
+                    else if (strncmp(recvline, "You can eat.\n", 13) == 0)
+                    {
+                        memset(recvline, 0, strlen(recvline));
+                        // yeah someone discarded something that you can eat;
+
+                        char answer[64] = {0};
+                        for (;;)
+                        {
+                            printf("You can eat, proceed? [Y/n]\n");
+                            if (read(STDIN_FILENO, answer, 64) == 0)
+                            {
+                                printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                                close(fd);
+                                exit(1);
+                            }
+                            if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
+                            {
+                                memset(answer, 0, strlen(answer));
+
+                                // want to eat;
+                                write_message_wait_ack(fd, "YES!\n");
+
+                                int eatindex1 = -1, eatindex2 = -1;
+                                print_deck(decks, door, discarded_mj, 0, 1);
+#ifdef DEBUG
+                                printf("pd in 844.\n");
+#endif
+                                for (;;)
+                                {
+                                    read_and_ack(fd);
+                                    if (strncmp(recvline, "Type which 2 of the mjs you want to eat with: \n", 47) == 0)
+                                    {
+                                        printf("%s", recvline);
+                                        memset(recvline, 0, strlen(recvline));
+
+                                        if (read(STDIN_FILENO, answer, 64) == 0)
+                                        {
+                                            printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                                            close(fd);
+                                            exit(1);
+                                        }
+                                        sscanf(answer, "%d %d", &eatindex1, &eatindex2);
+                                        write_message_wait_ack(fd, answer);
+
+                                        read_and_ack(fd);
+                                        if (strncmp(recvline, "eatable.\n", 10) == 0)
+                                        {
+                                            // good eat;
+                                            struct mj eat_temp[3];
+                                            eat_temp[0] = decks[eatindex1];
+                                            eat_temp[1] = decks[eatindex2];
+                                            eat_temp[2] = discarded_mj;
+                                            decks_quick_sort(eat_temp, 0, 2);
+                                            door[door_index++] = eat_temp[0];
+                                            door[door_index++] = eat_temp[1];
+                                            door[door_index++] = eat_temp[2];
+                                            decks[eatindex1].type = 0;
+                                            decks[eatindex1].number = 0;
+                                            decks[eatindex2].type = 0;
+                                            decks[eatindex2].number = 0;
+                                            swap(&decks[eatindex1], &decks[normal_capacity - 1]);
+                                            swap(&decks[eatindex2], &decks[normal_capacity - 2]);
+
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            printf("%s", recvline);
+                                        }
+                                        memset(recvline, 0, strlen(recvline));
+                                    }
+                                }
+
+                                normal_capacity -= 3;
+
+                                decks_quick_sort(decks, 0, normal_capacity);
+
+                                if (client_is_hu() == 1)
+                                {
+                                    // really won
+#ifdef DEBUG
+                                    printf("breaking in 871, hu kakutei after eat\n");
+#endif
+
+                                    break;
+                                }
+                                client_discard();
+                                break;
+                            }
+                            else if (strncmp(answer, "n\n", 2) == 0)
+                            {
+                                // don't want to eat;
+                                write_message_wait_ack(fd, "NO!\n");
+                                break;
+                            }
+                            else
+                            {
+                                // unexpected chars received.
+                                // back into the loop until correct response is given.
+                                memset(answer, 0, strlen(answer));
+                            }
+                        }
+                    }
+                    else if (strncmp(recvline, "no one wants it.\n", 17) == 0)
+                    {
+                        memset(recvline, 0, strlen(recvline));
+
+                        sea[sea_index++] = discarded_mj;
+                    }
+                    else if (strncmp(recvline, "(Game) ", 7) == 0)
+                    {
+                        // the game has set;
+                        break;
+                    }
+                    else if (strncmp(recvline, "(Hu) ", 5) == 0)
+                    {
+                        // you actually can hu
+                        memset(recvline, 0, strlen(recvline));
+                        char answer[64];
+                        for (;;)
+                        {
+                            printf("You actually can hu already, proceed? [Y/n]\n");
+                            if (read(STDIN_FILENO, answer, 64) == 0)
+                            {
+                                printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
+                                close(fd);
+                                exit(1);
+                            }
+                            if (strncmp(answer, "Y\n", 2) == 0 || strncmp(answer, "\n", 1) == 0)
+                            {
+                                // want to pong;
+                                write_message_wait_ack(fd, "YES!\n");
+                                break;
+                            }
+                            else if (strncmp(answer, "n\n", 2) == 0)
+                            {
+                                // don't want to pong;
+                                write_message_wait_ack(fd, "NO!\n");
+                                break;
+                            }
+                            else
+                            {
+                                // unexpected chars received.
+                                // back into the loop until correct response is given.
+                                memset(answer, 0, strlen(answer));
+                            }
+                        }
+                    }
+                    else if (strncmp(recvline, "(End) ", 6) == 0)
+                    {
+                        // the game has been flushed
+                        break;
+                    }
+                    else
+                    {
+                        printf("received this, please debug: %s", recvline);
+                        memset(recvline, 0, strlen(recvline));
+                    }
                 }
             }
         }

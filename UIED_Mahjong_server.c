@@ -1,9 +1,6 @@
 /*
     This is a server that plays the role as an virtual online mahjong table.
 
-    Sadly, 連莊、
-    is not implemented in this code yet.
-
     The server automatically starts with the first player, and will start with the next player in the next round, regardless of the result from the first game.
 
     After four rounds, the game is over and final scores (if implemented QQ) will be calculated and displayed.
@@ -529,9 +526,9 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         printf("\n");
     }
 
-    //print some msg
+    // print some msg
     printf("Your decks: \n");
-    
+
     // print the cap
     printf("_");
     for (int i = 0; i < 20; i++)
@@ -543,7 +540,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         printf("___");
     }
     printf("\t\t");
-    if(doors[0].type != 0 && doors[0].number != 0) printf("_");
+    if (doors[0].type != 0 && doors[0].number != 0)
+        printf("_");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -570,7 +568,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
             printf("%s|", number[hands[i].number]);
     }
     printf("\t\t");
-    if(doors[0].type != 0 && doors[0].number != 0) printf("|");
+    if (doors[0].type != 0 && doors[0].number != 0)
+        printf("|");
     for (int i = 0; i < 20; ++i)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -600,7 +599,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
             printf("%s|", type[hands[i].type]);
     }
     printf("\t\t");
-    if(doors[0].type != 0 && doors[0].number != 0) printf("|");
+    if (doors[0].type != 0 && doors[0].number != 0)
+        printf("|");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -625,7 +625,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         printf("‾‾‾");
     }
     printf("\t\t");
-    if(doors[0].type != 0 && doors[0].number != 0) printf("‾");
+    if (doors[0].type != 0 && doors[0].number != 0)
+        printf("‾");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -883,7 +884,7 @@ int discard(int playernow) {
     return 0;
 }
 
-int quiet_gang(int playernow){
+int quiet_gang(int playernow) {
     int count[34]; // because there are totally 34 kinds of mjs in total (excluding FLOWER).
     memset(count, 0, 34 * sizeof(int));
 
@@ -941,7 +942,7 @@ int quiet_gang(int playernow){
             return 0;
         }
     }
-    else 
+    else
     {
         write_message_wait_ack(players[playernow]->fd, "You cannot quietly-gang.\n");
     }
@@ -957,7 +958,7 @@ int draw_n_discard(int playernow) {
         return 1;
     }
     print_deck(players[playernow]->decks, players[playernow]->door, discarded_mj, 0, 1);
-    while(quiet_gang(playernow) == 1)
+    while (quiet_gang(playernow) == 1)
     {
         draw(playernow);
         if (is_hu(playernow) == 1)
@@ -1546,35 +1547,59 @@ int game_set_display() {
         write_message_wait_ack(players[3]->fd, "(Game) The game is set and we have a winner: %d!!! Continue for next round? [Y/n]\n", winner);
     }
 
-    int newgame_count = 0;
+    int newgame_count = 0, response_count = 0;
+    fd_set temprset = rset;
 
-    read_and_ack(players[0]->fd);
-    if (strncmp(recvline, "YES!\n", 5) == 0)
+    while (response_count != 4)
     {
-        newgame_count++;
-    }
-    memset(recvline, 0, strlen(recvline));
+        testset = temprset;
+        select(maxfd + 1, &testset, NULL, NULL, NULL);
 
-    read_and_ack(players[1]->fd);
-    if (strncmp(recvline, "YES!\n", 5) == 0)
-    {
-        newgame_count++;
+        if (FD_ISSET(players[0]->fd, &testset))
+        {
+            read_and_ack(players[0]->fd);
+            response_count ++;
+            FD_CLR(players[0]->fd, &temprset);
+            if (strncmp(recvline, "YES!\n", 5) == 0)
+            {
+                newgame_count++;
+            }
+            memset(recvline, 0, strlen(recvline));
+        }
+        if (FD_ISSET(players[1]->fd, &testset))
+        {
+            read_and_ack(players[1]->fd);
+            response_count ++;
+            FD_CLR(players[1]->fd, &temprset);
+            if (strncmp(recvline, "YES!\n", 5) == 0)
+            {
+                newgame_count++;
+            }
+            memset(recvline, 0, strlen(recvline));
+        }
+        if (FD_ISSET(players[2]->fd, &testset))
+        {
+            read_and_ack(players[2]->fd);
+            response_count ++;
+            FD_CLR(players[2]->fd, &temprset);
+            if (strncmp(recvline, "YES!\n", 5) == 0)
+            {
+                newgame_count++;
+            }
+            memset(recvline, 0, strlen(recvline));
+        }
+        if (FD_ISSET(players[3]->fd, &testset))
+        {
+            read_and_ack(players[3]->fd);
+            response_count ++;
+            FD_CLR(players[3]->fd, &temprset);
+            if (strncmp(recvline, "YES!\n", 5) == 0)
+            {
+                newgame_count++;
+            }
+            memset(recvline, 0, strlen(recvline));
+        }
     }
-    memset(recvline, 0, strlen(recvline));
-
-    read_and_ack(players[2]->fd);
-    if (strncmp(recvline, "YES!\n", 5) == 0)
-    {
-        newgame_count++;
-    }
-    memset(recvline, 0, strlen(recvline));
-
-    read_and_ack(players[3]->fd);
-    if (strncmp(recvline, "YES!\n", 5) == 0)
-    {
-        newgame_count++;
-    }
-    memset(recvline, 0, strlen(recvline));
 
     if (newgame_count == 4)
     {
@@ -1585,10 +1610,10 @@ int game_set_display() {
         write_message_wait_ack(players[3]->fd, "start!\n");
         return 1;
     }
-    write_message_wait_ack(players[0]->fd, "no more game!\n");
-    write_message_wait_ack(players[1]->fd, "no more game!\n");
-    write_message_wait_ack(players[2]->fd, "no more game!\n");
-    write_message_wait_ack(players[3]->fd, "no more game!\n");
+    write_message_wait_ack(players[0]->fd, "Some players don't want to play, no more game!\n");
+    write_message_wait_ack(players[1]->fd, "Some players don't want to play, no more game!\n");
+    write_message_wait_ack(players[2]->fd, "Some players don't want to play, no more game!\n");
+    write_message_wait_ack(players[3]->fd, "Some players don't want to play, no more game!\n");
     // otherwise, return 0 to stop the game
     return 0;
 }
@@ -1703,5 +1728,3 @@ int main(int argc, char **argv) {
     close(listenfd);
     return 0;
 }
-
-// we havent implemented the 連莊、算台數 functionalities yet.
