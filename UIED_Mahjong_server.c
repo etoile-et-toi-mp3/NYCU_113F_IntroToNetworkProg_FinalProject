@@ -126,7 +126,7 @@ int write_message_wait_ack(int fd, const char *format, ...) {
     }
     else
     {
-        perror("Failed to read ACK");
+        printf("Player has disconnected, exiting...\n");
         exit(1);
     }
     return 1;
@@ -149,7 +149,7 @@ int read_and_ack(int fd) { // no memset yet, do it yourself
     }
     else
     {
-        perror("Failed to receive message");
+        printf("Player has disconnected, exiting...\n");
         exit(1);
     }
     return 1;
@@ -214,6 +214,11 @@ int connection_establish() {
 
                 // Player successfully connected
                 printf("A client is connected!\n");
+                
+                sprintf(sendline, "(join) You are the %d-th player, let's wait for others...\n", connection_count+1);
+                write(pre_players[i]->fd, sendline, strlen(sendline));
+                memset(sendline, 0, strlen(sendline));
+
                 FD_SET(pre_players[i]->fd, &rset);
                 if (pre_players[i]->fd > maxfd)
                 {

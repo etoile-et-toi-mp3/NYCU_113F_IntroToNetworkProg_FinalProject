@@ -71,7 +71,7 @@ int write_message_wait_ack(int fd, const char *format, ...) {
     }
     else
     {
-        perror("Failed to read ACK");
+        printf("Server exited prematurely. (Maybe it's because some other players disconnected.)\n");
         exit(1);
     }
     return 1;
@@ -95,7 +95,7 @@ int read_and_ack(int fd) { // no memset yet, do it yourself
     }
     else
     {
-        perror("Failed to receive message");
+        printf("Server exited prematurely. (Maybe it's because some other players disconnected.)\n");
         exit(1);
     }
     return 1;
@@ -119,6 +119,11 @@ int connection_establish() {
             {
                 printf("Server terminated prematurely!? Exiting...\n");
                 exit(1);
+            }
+            else if (strncmp(recvline, "(join) ", 7) == 0)
+            {
+                printf("%s", recvline);
+                memset(recvline, 0, strlen(recvline));
             }
             else if (strncmp(recvline, "wait...\n", 8) == 0)
             {
@@ -984,10 +989,12 @@ int game() {
         else
         {
             // stop the game
-            break;
+            printf("Oh no! Some player don't want to play anymore! Exiting...\n");
+            return 0;
         }
     }
 
+    printf("4 Games has finished, exiting...\n");
     return 0;
 }
 
@@ -997,6 +1004,8 @@ int main(int argc, char **argv) {
         printf("Usage: ./Mahjong_client <ServerIP>\n");
         return 1;
     }
+
+    system("clear");
 
     fd = socket(AF_INET, SOCK_STREAM, 0);
     memset(&serverinfo, 0, (serverlen = sizeof(struct sockaddr_in)));
