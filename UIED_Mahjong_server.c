@@ -73,6 +73,11 @@ int player_gameinfo_init(struct player *p) {
     p->door_index = 0;
     p->sea_index = 0;
     p->normal_capacity = 16;
+
+    memset(p->decks, 0, 20 * sizeof(struct mj));
+    memset(p->flowers, 0, 8 * sizeof(struct mj));
+    memset(p->door, 0, 20 * sizeof(struct mj));
+    memset(p->sea, 0, 150 * sizeof(struct mj));
     return 0;
 }
 
@@ -1526,6 +1531,7 @@ int othersreaction(int *playernowp) {
     // Case 4: no players can do anything
     write_message_wait_ack(players[*playernowp]->fd, "no one wants it.\n");
     players[*playernowp]->sea[players[*playernowp]->sea_index++] = discarded_mj;
+    printf("this is sea_index: %d\n", players[*playernowp]->sea_index);
     discarded_mj.type = 0;
     discarded_mj.number = 0;
     return 0;
@@ -1558,7 +1564,7 @@ int game_set_display() {
         if (FD_ISSET(players[0]->fd, &testset))
         {
             read_and_ack(players[0]->fd);
-            response_count ++;
+            response_count++;
             FD_CLR(players[0]->fd, &temprset);
             if (strncmp(recvline, "YES!\n", 5) == 0)
             {
@@ -1569,7 +1575,7 @@ int game_set_display() {
         if (FD_ISSET(players[1]->fd, &testset))
         {
             read_and_ack(players[1]->fd);
-            response_count ++;
+            response_count++;
             FD_CLR(players[1]->fd, &temprset);
             if (strncmp(recvline, "YES!\n", 5) == 0)
             {
@@ -1580,7 +1586,7 @@ int game_set_display() {
         if (FD_ISSET(players[2]->fd, &testset))
         {
             read_and_ack(players[2]->fd);
-            response_count ++;
+            response_count++;
             FD_CLR(players[2]->fd, &temprset);
             if (strncmp(recvline, "YES!\n", 5) == 0)
             {
@@ -1591,7 +1597,7 @@ int game_set_display() {
         if (FD_ISSET(players[3]->fd, &testset))
         {
             read_and_ack(players[3]->fd);
-            response_count ++;
+            response_count++;
             FD_CLR(players[3]->fd, &temprset);
             if (strncmp(recvline, "YES!\n", 5) == 0)
             {
@@ -1702,6 +1708,7 @@ int main(int argc, char **argv) {
             {
                 players[i] = malloc(sizeof(struct player));
                 memcpy(players[i], pre_players[i], sizeof(struct player));
+                free(pre_players[i]);
             }
 
             game();
