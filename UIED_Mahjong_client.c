@@ -549,7 +549,7 @@ int client_discard() {
         }
     }
 
-    write_message_wait_ack(fd, "%d", index);
+    write_message_wait_ack(fd, "%d\n", index);
 
     swap(&decks[normal_capacity], &decks[index]);
     decks[normal_capacity].type = 0;
@@ -1076,7 +1076,7 @@ int game() {
                                             close(fd);
                                             exit(1);
                                         }
-                                        sscanf(answer, "%d %d", &eatindex1, &eatindex2);
+                                        sscanf(answer, "%d %d\n", &eatindex1, &eatindex2);
                                         write_message_wait_ack(fd, answer);
 
                                         read_and_ack(fd);
