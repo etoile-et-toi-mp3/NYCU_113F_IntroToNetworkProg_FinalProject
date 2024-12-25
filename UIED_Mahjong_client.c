@@ -36,7 +36,7 @@ int flower_index = 0, door_index = 0, sea_index = 0, start_player = 0, normal_ca
 // the following variables are for cards;
 char number[10][10] = {"NULL", "一", "二", "三", "四", "五", "六", "七", "八", "九"};
 char wind_number[8][10] = {"NULL", "東", "南", "西", "北", "中", "發", "白"};
-char type[10][10] = {"NULL", "筒", "條", "萬", "風", "花"};
+char type[10][10] = {"NULL", "筒", "條", "萬", "  ", "花"};
 
 int write_message_wait_ack(int fd, const char *format, ...) {
     // construct the content in sendline
@@ -268,6 +268,9 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         printf("\n");
     }
 
+    //print some msg
+    printf("Your decks: \n");
+    
     // print the cap
     printf("_");
     for (int i = 0; i < 20; i++)
@@ -278,7 +281,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
             printf("  _");
         printf("___");
     }
-    printf("\t\t_");
+    printf("\t\t");
+    if(doors[0].type != 0 && doors[0].number != 0) printf("_");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -304,7 +308,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         else
             printf("%s|", number[hands[i].number]);
     }
-    printf("\t\t|");
+    printf("\t\t");
+    if(doors[0].type != 0 && doors[0].number != 0) printf("|");
     for (int i = 0; i < 20; ++i)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -333,7 +338,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
         else
             printf("%s|", type[hands[i].type]);
     }
-    printf("\t\t|");
+    printf("\t\t");
+    if(doors[0].type != 0 && doors[0].number != 0) printf("|");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -357,7 +363,8 @@ void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index)
             printf("  ‾");
         printf("‾‾‾");
     }
-    printf("\t\t‾");
+    printf("\t\t");
+    if(doors[0].type != 0 && doors[0].number != 0) printf("‾");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -690,7 +697,7 @@ int receive_id() {
     system("clear");
     printf("This is your id: %d\n", id_num);
     memset(recvline, 0, strlen(recvline));
-    sleep(5);
+    sleep(4);
     return 0;
 }
 

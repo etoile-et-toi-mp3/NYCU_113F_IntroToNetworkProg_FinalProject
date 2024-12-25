@@ -487,39 +487,40 @@ int deal(int playernow) {
 }
 
 // 印出手牌
-void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
-    // if last is played by other
-    if (hu == 0 && last.type != 0)
+void print_deck(mj *hands, mj *doors, mj on_board, int separate, int show_index) {
+
+#ifndef DEBUG
+    system("clear");
+#endif
+
+    // print the board card
+    if (on_board.type != 0 && on_board.number != 0)
     {
-        printf("other player played: \n");
-        printf("___\n");
-        if (last.type == 4)
+        printf("card on table: \n");
+        printf("____\n");
+        if (on_board.type == 4)
         {
-            printf("|%s|\n", wind_number[last.number]);
+            printf("|%s|\n", wind_number[on_board.number]);
         }
         else
-            printf("|%s|\n", number[last.number]);
-        if (last.type == 4 && last.number > 4)
+            printf("|%s|\n", number[on_board.number]);
+        if (on_board.type == 4 && on_board.number > 4)
         {
             printf("|  |\n");
         }
         else
-            printf("|%s|\n", type[last.type]);
-        printf("‾‾‾\n");
+            printf("|%s|\n", type[on_board.type]);
+        printf("‾‾‾‾\n");
     }
-    if (hu == 1)
-        printf("You are really good at this game! \nresult:\n");
-    else
-        printf("Your decks: \n");
-    // print index
-    if (you_to_play)
+    // print the index
+    if (show_index)
     {
-        for (int i = 0; i < 20; ++i)
+        for (int i = 0; i < 20; i++)
         {
             if (hands[i].type == 0 && hands[i].number == 0)
-            {
                 break;
-            }
+            if (hands[i + 1].type == 0 && hands[i + 1].number == 0 && separate)
+                printf("   ");
             if (i >= 10)
                 printf(" %d", i);
             else
@@ -528,38 +529,39 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
         printf("\n");
     }
 
-    for (int i = 0; i < 20; ++i)
+    //print some msg
+    printf("Your decks: \n");
+    
+    // print the cap
+    printf("_");
+    for (int i = 0; i < 20; i++)
     {
         if (hands[i].type == 0 && hands[i].number == 0)
-        {
             break;
-        }
-        printf("___");
-    }
-    printf("_\t");
-    if (hu && last.type != 0)
-    {
+        if (hands[i + 1].type == 0 && hands[i + 1].number == 0 && separate)
+            printf("  _");
         printf("___");
     }
     printf("\t\t");
-    for (int i = 0; i < 20; ++i)
+    if(doors[0].type != 0 && doors[0].number != 0) printf("_");
+    for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
-        {
             break;
-        }
         printf("___");
     }
-    printf("_\n");
+    printf("\n");
 
     // print the number
     printf("|");
-    for (int i = 0; i < 20; ++i)
+    for (int i = 0; i < 20; i++)
     {
         if (hands[i].type == 0 && hands[i].number == 0)
         {
             break;
         }
+        if (hands[i + 1].type == 0 && hands[i + 1].number == 0 && separate)
+            printf("  |");
         if (hands[i].type == 4)
         {
             printf("%s|", wind_number[hands[i].number]);
@@ -567,18 +569,8 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
         else
             printf("%s|", number[hands[i].number]);
     }
-    printf("\t");
-    if (hu && last.type != 0)
-    {
-        if (last.type == 4)
-        {
-            printf("|%s|", wind_number[last.number]);
-        }
-        else
-            printf("|%s|", number[last.number]);
-    }
-
-    printf("\t\t|");
+    printf("\t\t");
+    if(doors[0].type != 0 && doors[0].number != 0) printf("|");
     for (int i = 0; i < 20; ++i)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -592,33 +584,23 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
         else
             printf("%s|", number[doors[i].number]);
     }
-    // end of print the number
     printf("\n");
+
     // print the type
+    printf("|");
     for (int i = 0; i < 20; ++i)
     {
         if (hands[i].type == 0 && hands[i].number == 0)
-        {
             break;
-        }
+        if (hands[i + 1].type == 0 && hands[i + 1].number == 0 && separate)
+            printf("  |");
         if (hands[i].type == 4 && hands[i].number > 4)
-            printf("|  ");
+            printf("  |");
         else
-            printf("|%s", type[hands[i].type]);
+            printf("%s|", type[hands[i].type]);
     }
-    printf("|\t");
-    if (hu && last.type != 0)
-    {
-        if (last.type == 4 && last.number > 4)
-        {
-            printf("|  ");
-        }
-        else
-            printf("|%s", type[last.type]);
-    }
-    if (hu)
-        printf("|");
     printf("\t\t");
+    if(doors[0].type != 0 && doors[0].number != 0) printf("|");
     for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
@@ -626,35 +608,49 @@ void print_deck(mj *hands, mj *doors, mj last, int hu, int you_to_play) {
             break;
         }
         if (doors[i].type == 4 && doors[i].number > 4)
-            printf("|  ");
+            printf("  |");
         else
-            printf("|%s", type[doors[i].type]);
+            printf("%s|", type[doors[i].type]);
     }
-    printf("|\n");
-    // end of print the type
-    for (int i = 0; i < 20; ++i)
+    printf("\n");
+
+    // print under
+    printf("‾");
+    for (int i = 0; i < 20; i++)
     {
         if (hands[i].type == 0 && hands[i].number == 0)
-        {
             break;
-        }
-        printf("‾‾‾");
-    }
-    printf("‾\t");
-    if (hu && last.type != 0)
-    {
+        if (hands[i + 1].type == 0 && hands[i + 1].number == 0 && separate)
+            printf("  ‾");
         printf("‾‾‾");
     }
     printf("\t\t");
-    for (int i = 0; i < 20; ++i)
+    if(doors[0].type != 0 && doors[0].number != 0) printf("‾");
+    for (int i = 0; i < 20; i++)
     {
         if (doors[i].type == 0 && doors[i].number == 0)
-        {
             break;
-        }
         printf("‾‾‾");
     }
-    printf("‾\n");
+    printf("\n");
+}
+
+void print_single_card(mj a) {
+    printf("___\n|");
+    if (a.type == 4)
+    {
+        printf("%s", wind_number[a.number]);
+    }
+    else
+        printf("%s", number[a.number]);
+    printf("|\n|");
+    if (a.type == 4 && a.number > 4)
+    {
+        printf(" ");
+    }
+    else
+        printf("%s", type[a.type]);
+    printf("|\n‾‾‾\n");
     return;
 }
 
