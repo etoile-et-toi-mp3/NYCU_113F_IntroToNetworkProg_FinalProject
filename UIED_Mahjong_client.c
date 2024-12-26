@@ -115,7 +115,7 @@ int connection_establish() {
 
         if (FD_ISSET(fd, &testset))
         {
-            if (read(fd, recvline, MAXLINE) <= 0)
+            if (readline(fd, recvline, MAXLINE) <= 0)
             {
                 printf("Server terminated prematurely!? Exiting...\n");
                 exit(1);
@@ -427,7 +427,7 @@ int client_is_hu() {
         for (;;)
         {
             printf("You already suffice the conditions to win, proceed? [Y/n]\n");
-            if (read(STDIN_FILENO, answer, 64) == 0)
+            if (readline(STDIN_FILENO, answer, 64) == 0)
             {
                 printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
                 close(fd);
@@ -569,7 +569,7 @@ int client_quiet_gang() {
         for (;;)
         {
             printf("You can quietly-gang, proceed? [Y/n]\n");
-            if (read(STDIN_FILENO, answer, 64) == 0)
+            if (readline(STDIN_FILENO, answer, 64) == 0)
             {
                 printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
                 close(fd);
@@ -666,7 +666,7 @@ int client_game_set() {
     char answer[64];
     for (;;)
     {
-        if (read(STDIN_FILENO, answer, 64) == 0)
+        if (readline(STDIN_FILENO, answer, 64) == 0)
         {
             printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
             close(fd);
@@ -763,7 +763,7 @@ int game() {
             {
                 // sending message in this phase is not allowed, so we just clear it.
                 char garbage[MAXLINE];
-                read(STDIN_FILENO, garbage, MAXLINE);
+                readline(STDIN_FILENO, garbage, MAXLINE);
                 memset(garbage, 0, strlen(garbage));
             }
 
@@ -879,7 +879,7 @@ int game() {
                         for (;;)
                         {
                             printf("You can pong, proceed? [Y/n]\n");
-                            if (read(STDIN_FILENO, answer, 64) == 0)
+                            if (readline(STDIN_FILENO, answer, 64) == 0)
                             {
                                 printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
                                 close(fd);
@@ -965,7 +965,7 @@ int game() {
                         for (;;)
                         {
                             printf("You can gang, proceed? [Y/n]\n");
-                            if (read(STDIN_FILENO, answer, 64) == 0)
+                            if (readline(STDIN_FILENO, answer, 64) == 0)
                             {
                                 printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
                                 close(fd);
@@ -1053,7 +1053,7 @@ int game() {
                         for (;;)
                         {
                             printf("You can eat, proceed? [Y/n]\n");
-                            if (read(STDIN_FILENO, answer, 64) == 0)
+                            if (readline(STDIN_FILENO, answer, 64) == 0)
                             {
                                 printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
                                 close(fd);
@@ -1079,7 +1079,7 @@ int game() {
                                         printf("%s", recvline);
                                         memset(recvline, 0, strlen(recvline));
 
-                                        if (read(STDIN_FILENO, answer, 64) == 0)
+                                        if (readline(STDIN_FILENO, answer, 64) == 0)
                                         {
                                             printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
                                             close(fd);
@@ -1166,7 +1166,7 @@ int game() {
                         for (;;)
                         {
                             printf("You actually can hu already, proceed? [Y/n]\n");
-                            if (read(STDIN_FILENO, answer, 64) == 0)
+                            if (readline(STDIN_FILENO, answer, 64) == 0)
                             {
                                 printf("YOU HAVE PRESSED Ctrl-D. Exiting...\n");
                                 close(fd);

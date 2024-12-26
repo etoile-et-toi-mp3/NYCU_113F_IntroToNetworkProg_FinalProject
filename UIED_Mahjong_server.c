@@ -899,7 +899,7 @@ int quiet_gang(int playernow) {
         count[(players[playernow]->decks[j].type - 1) * 9 + players[playernow]->decks[j].number - 1]++;
     }
 
-    if (count[(players[playernow]->decks[players[playernow]->normal_capacity].type - 1) * 9 + players[playernow]->decks[players[playernow]->normal_capacity].number - 1] == 4)
+    if (count[(players[playernow]->decks[players[playernow]->normal_capacity].type - 1) * 9 + players[playernow]->decks[players[playernow]->normal_capacity].number - 1] >= 3)
     {
         // this deck can gang!
         write_message_wait_ack(players[playernow]->fd, "You can quietly-gang.\n");
